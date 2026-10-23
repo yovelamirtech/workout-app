@@ -159,8 +159,8 @@ These two functions are the heart of the testing lesson. Cover them well: empty 
 | 0.2 | Add Tailwind, set Hebrew + RTL | a Tailwind class visibly works; `dir="rtl"` on `<html>` | ✅ | Tailwind 4 via `@tailwindcss/vite`; `src/index.css` has `@import "tailwindcss"`. `<html lang="he" dir="rtl">`. |
 | 0.3 | Set up Vitest + jsdom + RTL + jest-dom | one sample component test passes with `npm test` | ✅ | Test config is inside `vite.config.ts`. Setup file `src/test/setup.ts` (jest-dom matchers, cleanup, clears localStorage after each test). No globals: tests import from `vitest`. |
 | 0.4 | ESLint and npm scripts `lint`, `test`, `build` | all three scripts run and pass | ✅ | ESLint 10 flat config (`eslint.config.js`): js + typescript-eslint + react-hooks + react-refresh. Also `test:watch`. |
-| 0.5 | GitHub Actions CI (`.github/workflows/ci.yml`) | on push and PR: install → lint → test → build; a failing test makes the run red | 🟡 | Workflow written (Node 22, npm ci → lint → test → build). **Left:** the folder is not a git repo yet — create the GitHub repo, push, and confirm a run goes green and a failing test turns it red. |
-| 0.6 | Deploy to GitHub Pages | push to `main` deploys automatically; Vite `base` set to the repo name; live URL in README | 🟡 | `deploy` job in `ci.yml` runs only on push to `main` after the `ci` job is green. `base: '/workout-app/'` (assumes the repo is named `workout-app`). **Left:** enable Settings → Pages → Source: GitHub Actions, first deploy, put the live URL in README. |
+| 0.5 | GitHub Actions CI (`.github/workflows/ci.yml`) | on push and PR: install → lint → test → build; a failing test makes the run red | 🟡 | Workflow runs on every push and PR (Node 22, npm ci → lint → test → build); first run on `main` was green. **Left:** show a red run from a failing test on a branch/PR (this is class demo step 2). |
+| 0.6 | Deploy to GitHub Pages | push to `main` deploys automatically; Vite `base` set to the repo name; live URL in README | ✅ | Repo: https://github.com/yovelamirtech/workout-app (public). Pages source = GitHub Actions. The `deploy` job in `ci.yml` runs only on push to `main` after the `ci` job is green. `base: '/workout-app/'`. Live: https://yovelamirtech.github.io/workout-app/ (in README). |
 
 ### Phase 1 — MVP (class)
 
@@ -173,7 +173,7 @@ These two functions are the heart of the testing lesson. Cover them well: empty 
 | 1.5 | Workout screen | each exercise shows "last time" and "suggested today"; user can add, edit and remove sets (weight + reps) | ✅ | Components `ExerciseCard` and `SetRow`. A new set copies the previous set, else the suggestion, else empty weight + target reps (`lib/workout.ts`). Bodyweight has no weight input; cardio is a "done" checkbox. |
 | 1.6 | Finish and save workout | session saved to storage; component test covers start → add set → finish → appears in history | ✅ | `finalizeLogs` drops sets with 0 reps and untouched exercises; "finish" is disabled until something is logged. After saving, the app goes to History. Covered in `App.test.tsx`. Also checked manually in the browser. |
 | 1.7 | History screen | past sessions listed newest first, with date and template name | ✅ | Date shown as DD/MM/YYYY; each session also lists its exercises and sets. |
-| 1.8 | README | what it is, screenshot, live link, how to run and test, CI status badge | 🟡 | Written. **Left:** replace `<OWNER>` in the badge and live URL after the repo exists; add a screenshot. |
+| 1.8 | README | what it is, screenshot, live link, how to run and test, CI status badge | 🟡 | Written, with CI badge and live link. **Left:** add a screenshot. |
 
 **🛑 Stop here until the owner says to continue.**
 
@@ -230,3 +230,4 @@ Add one line at the end of every session.
 | Date | Agent / session | What was done | Next step |
 |------|-----------------|---------------|-----------|
 | 2026-10-23 | Claude Code (Opus 5.5) | Phase 0 + Phase 1 code: scaffold, Tailwind/RTL, Vitest, ESLint, CI + Pages workflow, lib (progression, history, storage, workout), Home/Workout/History screens, README. lint, test (49 tests) and build pass. | Create the GitHub repo and push; enable Pages; fill in `<OWNER>` and the screenshot in README (0.5, 0.6, 1.8). Owner to review names. |
+| 2026-10-23 | Claude Code (Opus 5.5) | Created the public GitHub repo `yovelamirtech/workout-app`, enabled Pages (GitHub Actions), pushed `main`. CI green, site deployed and checked live. | Class demo: failing test on a branch → red PR (finishes 0.5); README screenshot (1.8). |
