@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { formatDate, formatSets, getTemplateName, sortSessionsNewestFirst, toIsoDate } from './history'
+import { formatDate, formatEntries, formatWeight, getTemplateName, sortSessionsNewestFirst, toIsoDate } from './history'
 import type { WorkoutSession } from './types'
 
 function session(id: string, date: string): WorkoutSession {
@@ -48,14 +48,27 @@ describe('formatDate', () => {
   })
 })
 
-describe('formatSets', () => {
-  it('shows weight × reps for weight exercises', () => {
-    const sets = [{ weightKg: 60, reps: 10 }, { weightKg: 62.5, reps: 8 }]
-    expect(formatSets(sets, 'weight')).toBe('60×10, 62.5×8')
+describe('formatWeight', () => {
+  it('shows the unit for kg and lb', () => {
+    expect(formatWeight(40, 'kg')).toBe('40 ק״ג')
+    expect(formatWeight(90, 'lb')).toBe('90 פאונד')
   })
 
-  it('shows only reps for bodyweight exercises', () => {
-    const sets = [{ weightKg: 0, reps: 12 }, { weightKg: 0, reps: 10 }]
-    expect(formatSets(sets, 'bodyweight')).toBe('12, 10 חזרות')
+  it('shows only the number for other units', () => {
+    expect(formatWeight(7, 'other')).toBe('7')
+  })
+})
+
+describe('formatEntries', () => {
+  it('lists each machine with its weight', () => {
+    const entries = [
+      { machine: 'כבל', weight: 40, unit: 'kg' as const },
+      { machine: 'מכונה', weight: 7, unit: 'other' as const },
+    ]
+    expect(formatEntries(entries)).toBe('כבל 40 ק״ג · מכונה 7')
+  })
+
+  it('shows just the weight for an unnamed machine', () => {
+    expect(formatEntries([{ machine: '', weight: 40, unit: 'kg' }])).toBe('40 ק״ג')
   })
 })

@@ -1,22 +1,16 @@
-import { formatSets } from '../lib/history'
-import type { Exercise, ExerciseLog, SetEntry, Suggestion } from '../lib/types'
-import { getNewSetDefaults } from '../lib/workout'
-import SetRow from './SetRow'
+import { findLastEntry } from '../lib/lastTime'
+import type { Exercise, ExerciseLog, MachineEntry } from '../lib/types'
+import { emptyMachineEntry } from '../lib/workout'
+import MachineRow from './MachineRow'
 
 interface ExerciseCardProps {
   exercise: Exercise
   log: ExerciseLog
-  lastLog: ExerciseLog | null
-  suggestion: Suggestion | null
+  lastEntries: MachineEntry[]
   onChange: (log: ExerciseLog) => void
 }
 
-function formatSuggestion(suggestion: Suggestion, exercise: Exercise): string {
-  if (exercise.type === 'bodyweight') return `${suggestion.reps} חזרות`
-  return `${suggestion.weightKg} ק״ג × ${suggestion.reps}`
-}
-
-export default function ExerciseCard({ exercise, log, lastLog, suggestion, onChange }: ExerciseCardProps) {
+export default function ExerciseCard({ exercise, log, lastEntries, onChange }: ExerciseCardProps) {
   if (exercise.type === 'cardio') {
     return (
       <section aria-label={exercise.name} className="rounded-xl bg-white p-4 shadow-sm">
@@ -33,40 +27,32 @@ export default function ExerciseCard({ exercise, log, lastLog, suggestion, onCha
     )
   }
 
-  function updateSet(index: number, set: SetEntry) {
-    onChange({ ...log, sets: log.sets.map((s, i) => (i === index ? set : s)) })
+  function updateEntry(index: number, entry: MachineEntry) {
+    onChange({ ...log, entries: log.entries.map((e, i) => (i === index ? entry : e)) })
   }
 
-  function removeSet(index: number) {
-    onChange({ ...log, sets: log.sets.filter((_, i) => i !== index) })
+  function removeEntry(index: number) {
+    onChange({ ...log, entries: log.entries.filter((_, i) => i !== index) })
   }
 
-  function addSet() {
-    onChange({ ...log, sets: [...log.sets, getNewSetDefaults(log.sets, suggestion, exercise)] })
+  function addEntry() {
+    onChange({ ...log, entries: [...log.entries, emptyMachineEntry()] })
   }
 
   return (
     <section aria-label={exercise.name} className="rounded-xl bg-white p-4 shadow-sm">
       <h2 className="text-lg font-semibold">{exercise.name}</h2>
-      <dl className="mt-1 grid grid-cols-[auto_1fr] gap-x-2 text-sm text-slate-600">
-        <dt>פעם קודמת:</dt>
-        <dd>{lastLog ? formatSets(lastLog.sets, exercise.type) : 'אין עדיין'}</dd>
-        <dt>מוצע היום:</dt>
-        <dd className="font-semibold text-blue-700">
-          {suggestion ? formatSuggestion(suggestion, exercise) : '—'}
-        </dd>
-      </dl>
 
-      {log.sets.length > 0 && (
+      {log.entries.length > 0 && (
         <ol className="mt-3 flex flex-col gap-2">
-          {log.sets.map((set, index) => (
-            <SetRow
+          {log.entries.map((entry, index) => (
+            <MachineRow
               key={index}
-              setNumber={index + 1}
-              set={set}
-              showWeight={exercise.type === 'weight'}
-              onChange={(updated) => updateSet(index, updated)}
-              onRemove={() => removeSet(index)}
+              rowNumber={index + 1}
+              entry={entry}
+              lastEntry={findLastEntry(entry.machine, lastEntries)}
+              onChange={(updated) => updateEntry(index, updated)}
+              onRemove={() => removeEntry(index)}
             />
           ))}
         </ol>
@@ -75,9 +61,9 @@ export default function ExerciseCard({ exercise, log, lastLog, suggestion, onCha
       <button
         type="button"
         className="mt-3 min-h-12 w-full rounded-lg border-2 border-dashed border-blue-300 font-semibold text-blue-700 hover:bg-blue-50"
-        onClick={addSet}
+        onClick={addEntry}
       >
-        + הוספת סט
+        + הוספת מכונה
       </button>
     </section>
   )

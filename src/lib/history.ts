@@ -1,4 +1,4 @@
-import type { ExerciseType, SetEntry, WorkoutSession, WorkoutTemplate } from './types'
+import type { MachineEntry, WeightUnit, WorkoutSession, WorkoutTemplate } from './types'
 
 export function sortSessionsNewestFirst(sessions: WorkoutSession[]): WorkoutSession[] {
   // Reverse first so that, on the same date, the later-saved session comes first
@@ -23,9 +23,19 @@ export function formatDate(isoDate: string): string {
   return `${day}/${month}/${year}`
 }
 
-export function formatSets(sets: SetEntry[], type: ExerciseType): string {
-  if (type === 'bodyweight') {
-    return `${sets.map((set) => set.reps).join(', ')} חזרות`
-  }
-  return sets.map((set) => `${set.weightKg}×${set.reps}`).join(', ')
+const UNIT_LABELS: Record<WeightUnit, string> = { kg: 'ק״ג', lb: 'פאונד', other: '' }
+
+// "40 ק״ג", "90 פאונד", or just "7" for a machine-specific number
+export function formatWeight(weight: number, unit: WeightUnit): string {
+  return `${weight} ${UNIT_LABELS[unit]}`.trim()
+}
+
+// "כבל 40 ק״ג · מכונה 90 פאונד"
+export function formatEntries(entries: MachineEntry[]): string {
+  return entries
+    .map((entry) => {
+      const weight = formatWeight(entry.weight, entry.unit)
+      return entry.machine ? `${entry.machine} ${weight}` : weight
+    })
+    .join(' · ')
 }

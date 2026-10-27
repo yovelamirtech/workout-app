@@ -1,21 +1,24 @@
-import { DEFAULT_TARGET_REPS } from './progression'
-import type { Exercise, ExerciseLog, SetEntry, Suggestion } from './types'
+import type { ExerciseLog, MachineEntry } from './types'
 
-// Values for a newly added set: copy the previous set, else today's suggestion, else empty weight.
-export function getNewSetDefaults(
-  currentSets: SetEntry[],
-  suggestion: Suggestion | null,
-  exercise: Exercise,
-): SetEntry {
-  const previousSet = currentSets.at(-1)
-  if (previousSet) return { ...previousSet }
-  if (suggestion) return { ...suggestion }
-  return { weightKg: 0, reps: exercise.targetReps ?? DEFAULT_TARGET_REPS }
+export function emptyMachineEntry(): MachineEntry {
+  return { machine: '', weight: 0, unit: 'kg' }
 }
 
-// Keeps only what was actually logged: sets with reps, and cardio marked done.
+// Rows for a new workout: one empty row per machine used before (same name and unit),
+// or a single empty row for an exercise with no history.
+export function getDraftEntries(lastEntries: MachineEntry[]): MachineEntry[] {
+  if (lastEntries.length === 0) return [emptyMachineEntry()]
+  return lastEntries.map((entry) => ({ machine: entry.machine, weight: 0, unit: entry.unit }))
+}
+
+// Keeps only what was actually logged: machines with a weight, and cardio marked done.
 export function finalizeLogs(draftLogs: ExerciseLog[]): ExerciseLog[] {
   return draftLogs
-    .map((log) => ({ ...log, sets: log.sets.filter((set) => set.reps > 0) }))
-    .filter((log) => log.sets.length > 0 || log.done)
+    .map((log) => ({
+      ...log,
+      entries: log.entries
+        .filter((entry) => entry.weight > 0)
+        .map((entry) => ({ ...entry, machine: entry.machine.trim() })),
+    }))
+    .filter((log) => log.entries.length > 0 || log.done)
 }
