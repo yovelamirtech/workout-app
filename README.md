@@ -4,22 +4,23 @@
 
 A simple, mobile-first web app (Hebrew, RTL) for logging gym workouts and knowing what to lift next time.
 
-- Pick today's workout, log weight and reps for each set.
-- See what you did **last time** on each exercise and a **suggested weight** for today.
+- Pick today's workout and log the weight you used on each exercise. No reps.
+- One exercise can be done on several machines (cable, plate-loaded machine, dumbbells...). Each machine has its own name, weight and unit (kg, lb, or "other" for a machine-specific number).
+- See what you did **last time** on each machine.
 - Everything is stored locally in the browser (localStorage). No backend, no login.
 
 **Live site:** https://yovelamirtech.github.io/workout-app/
 
 <!-- TODO: add a screenshot, e.g. docs/screenshot.png -->
 
-## Progression rule
+## Last time
 
-- No history for an exercise → no suggestion.
-- Weight exercise: every set in the last session reached the target reps (default 10) → last top weight + increment (default 2.5 kg). Otherwise the same weight.
-- Bodyweight exercise: every set reached the target → target + 1 rep. Otherwise the target.
-- Weights are rounded to 0.5 kg.
+- For each exercise, every machine used before gets a row in the next workout, with its name, unit and last weight.
+- The latest session wins (on the same date, the one saved later). Machines are matched by name, ignoring case and extra spaces.
+- Units are never converted or compared between machines.
+- Data saved before machines existed (sets with reps) is migrated on load: the top weight becomes one unnamed machine in kg.
 
-The logic lives in [`src/lib/progression.ts`](src/lib/progression.ts) and is fully unit-tested.
+The logic lives in [`src/lib/lastTime.ts`](src/lib/lastTime.ts) and is fully unit-tested.
 
 ## Run locally
 

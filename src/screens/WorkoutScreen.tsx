@@ -1,8 +1,8 @@
 import { useState } from 'react'
 import ExerciseCard from '../components/ExerciseCard'
-import { getLastLog, suggestNext } from '../lib/progression'
+import { getLastEntries } from '../lib/lastTime'
 import type { Exercise, ExerciseLog, WorkoutSession, WorkoutTemplate } from '../lib/types'
-import { finalizeLogs } from '../lib/workout'
+import { finalizeLogs, getDraftEntries } from '../lib/workout'
 
 interface WorkoutScreenProps {
   template: WorkoutTemplate
@@ -17,8 +17,13 @@ export default function WorkoutScreen({ template, exercises, sessions, onFinish,
     .map((id) => exercises.find((exercise) => exercise.id === id))
     .filter((exercise) => exercise !== undefined)
 
+  const lastEntriesByExercise = templateExercises.map((exercise) => getLastEntries(exercise.id, sessions))
+
   const [draftLogs, setDraftLogs] = useState<ExerciseLog[]>(() =>
-    templateExercises.map((exercise) => ({ exerciseId: exercise.id, sets: [] })),
+    templateExercises.map((exercise, index) => ({
+      exerciseId: exercise.id,
+      entries: exercise.type === 'cardio' ? [] : getDraftEntries(lastEntriesByExercise[index]),
+    })),
   )
 
   const finishedLogs = finalizeLogs(draftLogs)
@@ -31,19 +36,15 @@ export default function WorkoutScreen({ template, exercises, sessions, onFinish,
     <div className="flex flex-col gap-3">
       <h2 className="text-xl font-bold">{template.name}</h2>
 
-      {templateExercises.map((exercise, index) => {
-        const lastLog = getLastLog(exercise.id, sessions)
-        return (
-          <ExerciseCard
-            key={exercise.id}
-            exercise={exercise}
-            log={draftLogs[index]}
-            lastLog={lastLog}
-            suggestion={suggestNext(lastLog, exercise)}
-            onChange={updateLog}
-          />
-        )
-      })}
+      {templateExercises.map((exercise, index) => (
+        <ExerciseCard
+          key={exercise.id}
+          exercise={exercise}
+          log={draftLogs[index]}
+          lastEntries={lastEntriesByExercise[index]}
+          onChange={updateLog}
+        />
+      ))}
 
       <div className="sticky bottom-0 -mx-4 flex gap-2 bg-slate-100/95 px-4 py-3">
         <button

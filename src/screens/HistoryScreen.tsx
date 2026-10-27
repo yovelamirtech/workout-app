@@ -1,4 +1,4 @@
-import { formatDate, formatSets, getTemplateName, sortSessionsNewestFirst } from '../lib/history'
+import { formatDate, formatEntries, getTemplateName, sortSessionsNewestFirst } from '../lib/history'
 import type { Exercise, WorkoutSession, WorkoutTemplate } from '../lib/types'
 
 interface HistoryScreenProps {
@@ -30,7 +30,7 @@ export default function HistoryScreen({ sessions, templates, exercises }: Histor
                 return (
                   <li key={log.exerciseId}>
                     {exercise?.name ?? log.exerciseId}:{' '}
-                    {exercise?.type === 'cardio' ? '✓' : formatSets(log.sets, exercise?.type ?? 'weight')}
+                    {exercise?.type === 'cardio' ? '✓' : formatEntries(log.entries)}
                   </li>
                 )
               })}

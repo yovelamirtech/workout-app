@@ -5,42 +5,51 @@ import App from './App'
 import { loadSessions } from './lib/storage'
 
 describe('App', () => {
-  it('start → add set → finish → appears in history and storage', async () => {
+  it('start → log a machine weight → finish → appears in history and storage', async () => {
     const user = userEvent.setup()
     render(<App />)
 
     await user.click(screen.getByRole('button', { name: /רגליים \+ ידיים/ }))
 
     const legCurl = screen.getByRole('region', { name: 'כפיפת ברכיים' })
-    await user.click(within(legCurl).getByRole('button', { name: /הוספת סט/ }))
-    await user.type(within(legCurl).getByLabelText('משקל סט 1'), '40')
+    await user.type(within(legCurl).getByLabelText('שם מכונה 1'), 'כבל')
+    await user.type(within(legCurl).getByLabelText('משקל מכונה 1'), '40')
     await user.click(screen.getByRole('button', { name: 'סיום ושמירה' }))
 
     expect(screen.getByRole('heading', { name: 'היסטוריה' })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'רגליים + ידיים' })).toBeInTheDocument()
-    expect(screen.getByText(/כפיפת ברכיים: 40×10/)).toBeInTheDocument()
+    expect(screen.getByText('כפיפת ברכיים: כבל 40 ק״ג')).toBeInTheDocument()
 
     const saved = loadSessions()
     expect(saved).toHaveLength(1)
-    expect(saved[0].logs).toEqual([{ exerciseId: 'leg-curl', sets: [{ weightKg: 40, reps: 10 }] }])
+    expect(saved[0].logs).toEqual([
+      { exerciseId: 'leg-curl', entries: [{ machine: 'כבל', weight: 40, unit: 'kg' }] },
+    ])
   })
 
-  it('shows the suggestion from the last saved workout', async () => {
+  it('next workout shows each machine from last time with its weight', async () => {
     const user = userEvent.setup()
     render(<App />)
 
     await user.click(screen.getByRole('button', { name: /רגליים \+ ידיים/ }))
     const legCurl = screen.getByRole('region', { name: 'כפיפת ברכיים' })
-    await user.click(within(legCurl).getByRole('button', { name: /הוספת סט/ }))
-    await user.type(within(legCurl).getByLabelText('משקל סט 1'), '40')
+    await user.type(within(legCurl).getByLabelText('שם מכונה 1'), 'כבל')
+    await user.type(within(legCurl).getByLabelText('משקל מכונה 1'), '40')
+    await user.click(within(legCurl).getByRole('button', { name: /הוספת מכונה/ }))
+    await user.type(within(legCurl).getByLabelText('שם מכונה 2'), 'מכונה')
+    await user.type(within(legCurl).getByLabelText('משקל מכונה 2'), '90')
+    await user.selectOptions(within(legCurl).getByLabelText('יחידה מכונה 2'), 'lb')
     await user.click(screen.getByRole('button', { name: 'סיום ושמירה' }))
 
     await user.click(screen.getByRole('button', { name: 'אימון חדש' }))
     await user.click(screen.getByRole('button', { name: /רגליים \+ ידיים/ }))
 
     const nextLegCurl = screen.getByRole('region', { name: 'כפיפת ברכיים' })
-    expect(within(nextLegCurl).getByText('40×10')).toBeInTheDocument()
-    expect(within(nextLegCurl).getByText('42.5 ק״ג × 10')).toBeInTheDocument()
+    expect(within(nextLegCurl).getByLabelText('שם מכונה 1')).toHaveValue('כבל')
+    expect(within(nextLegCurl).getByText('40 ק״ג')).toBeInTheDocument()
+    expect(within(nextLegCurl).getByLabelText('שם מכונה 2')).toHaveValue('מכונה')
+    expect(within(nextLegCurl).getByLabelText('יחידה מכונה 2')).toHaveValue('lb')
+    expect(within(nextLegCurl).getByText('90 פאונד')).toBeInTheDocument()
   })
 
   it('cannot finish an empty workout', async () => {
