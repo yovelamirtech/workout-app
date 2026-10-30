@@ -1,6 +1,6 @@
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import App from './App'
 import { loadSessions } from './lib/storage'
 
@@ -27,7 +27,7 @@ describe('App', () => {
     ])
   })
 
-  it('next workout shows each machine from last time with its weight', async () => {
+  it('next workout is prefilled with each machine from last time and its weight', async () => {
     const user = userEvent.setup()
     render(<App />)
 
@@ -46,10 +46,28 @@ describe('App', () => {
 
     const nextLegCurl = screen.getByRole('region', { name: 'כפיפת ברכיים' })
     expect(within(nextLegCurl).getByLabelText('שם מכונה 1')).toHaveValue('כבל')
+    expect(within(nextLegCurl).getByLabelText('משקל מכונה 1')).toHaveValue(40)
     expect(within(nextLegCurl).getByText('40 ק״ג')).toBeInTheDocument()
     expect(within(nextLegCurl).getByLabelText('שם מכונה 2')).toHaveValue('מכונה')
+    expect(within(nextLegCurl).getByLabelText('משקל מכונה 2')).toHaveValue(90)
     expect(within(nextLegCurl).getByLabelText('יחידה מכונה 2')).toHaveValue('lb')
     expect(within(nextLegCurl).getByText('90 פאונד')).toBeInTheDocument()
+  })
+
+  it('deletes a workout from history and storage', async () => {
+    const user = userEvent.setup()
+    vi.spyOn(window, 'confirm').mockReturnValue(true)
+    render(<App />)
+
+    await user.click(screen.getByRole('button', { name: /רגליים \+ ידיים/ }))
+    const legCurl = screen.getByRole('region', { name: 'כפיפת ברכיים' })
+    await user.type(within(legCurl).getByLabelText('משקל מכונה 1'), '40')
+    await user.click(screen.getByRole('button', { name: 'סיום ושמירה' }))
+
+    await user.click(screen.getByRole('button', { name: /מחיקת אימון רגליים \+ ידיים/ }))
+    expect(screen.getByText('עדיין אין אימונים שמורים')).toBeInTheDocument()
+    expect(loadSessions()).toEqual([])
+    vi.restoreAllMocks()
   })
 
   it('cannot finish an empty workout', async () => {

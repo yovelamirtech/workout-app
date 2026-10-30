@@ -41,16 +41,17 @@ function renderScreen(onFinish = vi.fn()) {
 }
 
 describe('WorkoutScreen', () => {
-  it('shows a row per machine used before, with last time and its unit', () => {
+  it('shows a row per machine used before, prefilled with last time and its unit', () => {
     renderScreen()
     const bench = screen.getByRole('region', { name: 'לחיצת חזה' })
 
     expect(within(bench).getByLabelText('שם מכונה 1')).toHaveValue('כבל')
-    expect(within(bench).getByLabelText('משקל מכונה 1')).toHaveValue(null)
+    expect(within(bench).getByLabelText('משקל מכונה 1')).toHaveValue(30)
     expect(within(bench).getByLabelText('יחידה מכונה 1')).toHaveValue('kg')
     expect(within(bench).getByText('30 ק״ג')).toBeInTheDocument()
 
     expect(within(bench).getByLabelText('שם מכונה 2')).toHaveValue('מכונה')
+    expect(within(bench).getByLabelText('משקל מכונה 2')).toHaveValue(7)
     expect(within(bench).getByLabelText('יחידה מכונה 2')).toHaveValue('other')
     expect(within(bench).getByText('7')).toBeInTheDocument()
   })
@@ -64,12 +65,29 @@ describe('WorkoutScreen', () => {
     expect(screen.queryByText(/חזרות/)).not.toBeInTheDocument()
   })
 
-  it('adds a new machine with its own name, weight and unit, and saves only machines with a weight', async () => {
+  it('saves prefilled weights unchanged when finishing right away', async () => {
+    const user = userEvent.setup()
+    const onFinish = renderScreen()
+    await user.click(screen.getByRole('button', { name: 'סיום ושמירה' }))
+    expect(onFinish).toHaveBeenCalledWith([
+      {
+        exerciseId: 'bench',
+        entries: [
+          { machine: 'כבל', weight: 30, unit: 'kg' },
+          { machine: 'מכונה', weight: 7, unit: 'other' },
+        ],
+      },
+    ])
+  })
+
+  it('changes a prefilled weight, adds a new machine, and saves only machines with a weight', async () => {
     const user = userEvent.setup()
     const onFinish = renderScreen()
     const bench = screen.getByRole('region', { name: 'לחיצת חזה' })
 
+    await user.clear(within(bench).getByLabelText('משקל מכונה 1'))
     await user.type(within(bench).getByLabelText('משקל מכונה 1'), '32.5')
+    await user.clear(within(bench).getByLabelText('משקל מכונה 2'))
 
     await user.click(within(bench).getByRole('button', { name: /הוספת מכונה/ }))
     await user.type(within(bench).getByLabelText('שם מכונה 3'), 'משקולות')
@@ -114,6 +132,9 @@ describe('WorkoutScreen', () => {
     const onFinish = renderScreen()
     await user.click(screen.getByRole('checkbox', { name: 'הליכה בשיפוע' }))
     await user.click(screen.getByRole('button', { name: 'סיום ושמירה' }))
-    expect(onFinish).toHaveBeenCalledWith([{ exerciseId: 'walk', entries: [], done: true }])
+    expect(onFinish).toHaveBeenCalledWith([
+      expect.objectContaining({ exerciseId: 'bench' }),
+      { exerciseId: 'walk', entries: [], done: true },
+    ])
   })
 })
