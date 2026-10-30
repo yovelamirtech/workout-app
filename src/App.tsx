@@ -29,6 +29,12 @@ export default function App() {
     setScreen({ name: 'history' })
   }
 
+  function deleteSession(sessionId: string) {
+    const updatedSessions = sessions.filter((session) => session.id !== sessionId)
+    setSessions(updatedSessions)
+    saveSessions(updatedSessions)
+  }
+
   const navButtonClass = (active: boolean) =>
     `min-h-12 flex-1 rounded-lg font-semibold ${active ? 'bg-blue-600 text-white' : 'text-slate-600 hover:bg-slate-200'}`
 
@@ -73,7 +79,12 @@ export default function App() {
           />
         )}
         {screen.name === 'history' && (
-          <HistoryScreen sessions={sessions} templates={defaultTemplates} exercises={defaultExercises} />
+          <HistoryScreen
+            sessions={sessions}
+            templates={defaultTemplates}
+            exercises={defaultExercises}
+            onDelete={deleteSession}
+          />
         )}
       </main>
     </div>

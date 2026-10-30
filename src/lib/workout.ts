@@ -4,11 +4,11 @@ export function emptyMachineEntry(): MachineEntry {
   return { machine: '', weight: 0, unit: 'kg' }
 }
 
-// Rows for a new workout: one empty row per machine used before (same name and unit),
-// or a single empty row for an exercise with no history.
+// Rows for a new workout: one row per machine used before, prefilled with last time's
+// name, weight and unit, or a single empty row for an exercise with no history.
 export function getDraftEntries(lastEntries: MachineEntry[]): MachineEntry[] {
   if (lastEntries.length === 0) return [emptyMachineEntry()]
-  return lastEntries.map((entry) => ({ machine: entry.machine, weight: 0, unit: entry.unit }))
+  return lastEntries.map((entry) => ({ ...entry }))
 }
 
 // Keeps only what was actually logged: machines with a weight, and cardio marked done.

@@ -6,14 +6,14 @@ describe('getDraftEntries', () => {
     expect(getDraftEntries([])).toEqual([{ machine: '', weight: 0, unit: 'kg' }])
   })
 
-  it('has an empty row per machine used before, keeping name and unit', () => {
+  it('has a row per machine used before, prefilled with name, weight and unit', () => {
     const lastEntries = [
       { machine: 'כבל', weight: 35, unit: 'kg' as const },
       { machine: 'מכונה', weight: 7, unit: 'other' as const },
     ]
     expect(getDraftEntries(lastEntries)).toEqual([
-      { machine: 'כבל', weight: 0, unit: 'kg' },
-      { machine: 'מכונה', weight: 0, unit: 'other' },
+      { machine: 'כבל', weight: 35, unit: 'kg' },
+      { machine: 'מכונה', weight: 7, unit: 'other' },
     ])
   })
 })
