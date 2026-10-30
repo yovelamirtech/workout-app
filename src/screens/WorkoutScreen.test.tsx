@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react'
+import { fireEvent, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 import type { Exercise, Workout } from '../lib/types'
@@ -98,6 +98,35 @@ describe('WorkoutScreen', () => {
       exerciseId: 'row',
       machines: [{ machine: 'משקולות', weight: 20, unit: 'lb' }],
     })
+  })
+
+  it('opens the editor when the card is tapped', async () => {
+    const user = userEvent.setup()
+    renderScreen()
+    const bench = screen.getByRole('region', { name: 'לחיצת חזה' })
+
+    await user.click(within(bench).getByText('כבל: 30 ק״ג'))
+    expect(within(bench).getByLabelText('משקל מכונה 1')).toHaveValue(30)
+  })
+
+  it('does not open the editor when the touch moved, as in a scroll', () => {
+    renderScreen()
+    const bench = screen.getByRole('region', { name: 'לחיצת חזה' })
+
+    fireEvent.pointerDown(bench, { clientX: 100, clientY: 100 })
+    fireEvent.click(bench, { clientX: 100, clientY: 160 })
+    expect(within(bench).queryByLabelText('משקל מכונה 1')).not.toBeInTheDocument()
+  })
+
+  it('the only machine cannot be deleted', async () => {
+    const user = userEvent.setup()
+    renderScreen()
+    const bench = screen.getByRole('region', { name: 'לחיצת חזה' })
+
+    await user.click(within(bench).getByRole('button', { name: 'עריכת לחיצת חזה' }))
+    expect(within(bench).getByRole('button', { name: 'מחיקת מכונה 1' })).toBeEnabled()
+    await user.click(within(bench).getByRole('button', { name: 'מחיקת מכונה 2' }))
+    expect(within(bench).getByRole('button', { name: 'מחיקת מכונה 1' })).toBeDisabled()
   })
 
   it('cancel discards the changes', async () => {
