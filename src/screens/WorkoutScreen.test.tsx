@@ -1,7 +1,7 @@
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
-import type { Exercise, WorkoutSession, WorkoutTemplate } from '../lib/types'
+import type { Exercise, ExerciseLog, WorkoutSession, WorkoutTemplate } from '../lib/types'
 import WorkoutScreen from './WorkoutScreen'
 
 const exercises: Exercise[] = [
@@ -27,12 +27,13 @@ const sessions: WorkoutSession[] = [
   },
 ]
 
-function renderScreen(onFinish = vi.fn()) {
+function renderScreen(onFinish = vi.fn(), initialLogs?: ExerciseLog[]) {
   render(
     <WorkoutScreen
       template={template}
       exercises={exercises}
       sessions={sessions}
+      initialLogs={initialLogs}
       onFinish={onFinish}
       onCancel={vi.fn()}
     />,
@@ -136,5 +137,44 @@ describe('WorkoutScreen', () => {
       expect.objectContaining({ exerciseId: 'bench' }),
       { exerciseId: 'walk', entries: [], done: true },
     ])
+  })
+
+  describe('editing a saved workout', () => {
+    const savedLogs: ExerciseLog[] = [
+      { exerciseId: 'row', entries: [{ machine: 'כבל', weight: 25, unit: 'lb' }] },
+      { exerciseId: 'walk', entries: [], done: true },
+    ]
+
+    it('starts from the saved logs, with an empty row for an exercise that was not logged', () => {
+      renderScreen(vi.fn(), savedLogs)
+
+      expect(screen.getByRole('heading', { name: 'עריכת אימון: אימון בדיקה' })).toBeInTheDocument()
+      const row = screen.getByRole('region', { name: 'חתירה' })
+      expect(within(row).getByLabelText('שם מכונה 1')).toHaveValue('כבל')
+      expect(within(row).getByLabelText('משקל מכונה 1')).toHaveValue(25)
+      expect(within(row).getByLabelText('יחידה מכונה 1')).toHaveValue('lb')
+
+      const bench = screen.getByRole('region', { name: 'לחיצת חזה' })
+      expect(within(bench).getByLabelText('שם מכונה 1')).toHaveValue('')
+      expect(within(bench).getByLabelText('משקל מכונה 1')).toHaveValue(null)
+      expect(within(bench).queryByLabelText('שם מכונה 2')).not.toBeInTheDocument()
+
+      expect(screen.getByRole('checkbox', { name: 'הליכה בשיפוע' })).toBeChecked()
+    })
+
+    it('saves the changed logs', async () => {
+      const user = userEvent.setup()
+      const onFinish = renderScreen(vi.fn(), savedLogs)
+      const row = screen.getByRole('region', { name: 'חתירה' })
+
+      await user.clear(within(row).getByLabelText('משקל מכונה 1'))
+      await user.type(within(row).getByLabelText('משקל מכונה 1'), '30')
+      await user.click(screen.getByRole('checkbox', { name: 'הליכה בשיפוע' }))
+      await user.click(screen.getByRole('button', { name: 'שמירת שינויים' }))
+
+      expect(onFinish).toHaveBeenCalledWith([
+        { exerciseId: 'row', entries: [{ machine: 'כבל', weight: 30, unit: 'lb' }] },
+      ])
+    })
   })
 })

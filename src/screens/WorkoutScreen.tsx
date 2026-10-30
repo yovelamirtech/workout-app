@@ -8,11 +8,20 @@ interface WorkoutScreenProps {
   template: WorkoutTemplate
   exercises: Exercise[]
   sessions: WorkoutSession[]
+  // Logs of a saved workout being edited; omitted for a new workout
+  initialLogs?: ExerciseLog[]
   onFinish: (logs: ExerciseLog[]) => void
   onCancel: () => void
 }
 
-export default function WorkoutScreen({ template, exercises, sessions, onFinish, onCancel }: WorkoutScreenProps) {
+export default function WorkoutScreen({
+  template,
+  exercises,
+  sessions,
+  initialLogs,
+  onFinish,
+  onCancel,
+}: WorkoutScreenProps) {
   const templateExercises = template.exerciseIds
     .map((id) => exercises.find((exercise) => exercise.id === id))
     .filter((exercise) => exercise !== undefined)
@@ -20,10 +29,22 @@ export default function WorkoutScreen({ template, exercises, sessions, onFinish,
   const lastEntriesByExercise = templateExercises.map((exercise) => getLastEntries(exercise.id, sessions))
 
   const [draftLogs, setDraftLogs] = useState<ExerciseLog[]>(() =>
-    templateExercises.map((exercise, index) => ({
-      exerciseId: exercise.id,
-      entries: exercise.type === 'cardio' ? [] : getDraftEntries(lastEntriesByExercise[index]),
-    })),
+    templateExercises.map((exercise, index) => {
+      if (!initialLogs) {
+        return {
+          exerciseId: exercise.id,
+          entries: exercise.type === 'cardio' ? [] : getDraftEntries(lastEntriesByExercise[index]),
+        }
+      }
+      // When editing, an exercise that wasn't logged gets an empty row rather than last
+      // time's weights, so saving doesn't add it by accident
+      const saved = initialLogs.find((log) => log.exerciseId === exercise.id)
+      return {
+        exerciseId: exercise.id,
+        entries: exercise.type === 'cardio' ? [] : getDraftEntries(saved?.entries ?? []),
+        ...(saved?.done && { done: true }),
+      }
+    }),
   )
 
   const finishedLogs = finalizeLogs(draftLogs)
@@ -34,7 +55,7 @@ export default function WorkoutScreen({ template, exercises, sessions, onFinish,
 
   return (
     <div className="flex flex-col gap-3">
-      <h2 className="text-xl font-bold">{template.name}</h2>
+      <h2 className="text-xl font-bold">{initialLogs ? `עריכת אימון: ${template.name}` : template.name}</h2>
 
       {templateExercises.map((exercise, index) => (
         <ExerciseCard
@@ -53,7 +74,7 @@ export default function WorkoutScreen({ template, exercises, sessions, onFinish,
           disabled={finishedLogs.length === 0}
           onClick={() => onFinish(finishedLogs)}
         >
-          סיום ושמירה
+          {initialLogs ? 'שמירת שינויים' : 'סיום ושמירה'}
         </button>
         <button
           type="button"
