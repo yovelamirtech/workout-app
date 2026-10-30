@@ -70,6 +70,28 @@ describe('App', () => {
     vi.restoreAllMocks()
   })
 
+  it('edits a workout from history and saves it to storage', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+
+    await user.click(screen.getByRole('button', { name: /רגליים \+ ידיים/ }))
+    const legCurl = screen.getByRole('region', { name: 'כפיפת ברכיים' })
+    await user.type(within(legCurl).getByLabelText('משקל מכונה 1'), '40')
+    await user.click(screen.getByRole('button', { name: 'סיום ושמירה' }))
+
+    await user.click(screen.getByRole('button', { name: /עריכת אימון רגליים \+ ידיים/ }))
+    const editedLegCurl = screen.getByRole('region', { name: 'כפיפת ברכיים' })
+    expect(within(editedLegCurl).getByLabelText('משקל מכונה 1')).toHaveValue(40)
+    await user.clear(within(editedLegCurl).getByLabelText('משקל מכונה 1'))
+    await user.type(within(editedLegCurl).getByLabelText('משקל מכונה 1'), '45')
+    await user.click(screen.getByRole('button', { name: 'שמירת שינויים' }))
+
+    expect(screen.getByText('כפיפת ברכיים: 45 ק״ג')).toBeInTheDocument()
+    const saved = loadSessions()
+    expect(saved).toHaveLength(1)
+    expect(saved[0].logs).toEqual([{ exerciseId: 'leg-curl', entries: [{ machine: '', weight: 45, unit: 'kg' }] }])
+  })
+
   it('cannot finish an empty workout', async () => {
     const user = userEvent.setup()
     render(<App />)

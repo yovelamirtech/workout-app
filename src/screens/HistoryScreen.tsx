@@ -5,10 +5,11 @@ interface HistoryScreenProps {
   sessions: WorkoutSession[]
   templates: WorkoutTemplate[]
   exercises: Exercise[]
+  onEdit: (sessionId: string) => void
   onDelete: (sessionId: string) => void
 }
 
-export default function HistoryScreen({ sessions, templates, exercises, onDelete }: HistoryScreenProps) {
+export default function HistoryScreen({ sessions, templates, exercises, onEdit, onDelete }: HistoryScreenProps) {
   if (sessions.length === 0) {
     return <p className="py-8 text-center text-slate-500">עדיין אין אימונים שמורים</p>
   }
@@ -33,6 +34,14 @@ export default function HistoryScreen({ sessions, templates, exercises, onDelete
                   <time dateTime={session.date} className="text-sm text-slate-500">
                     {date}
                   </time>
+                  <button
+                    type="button"
+                    aria-label={`עריכת אימון ${templateName} ${date}`}
+                    className="min-h-12 min-w-12 rounded-lg text-xl text-blue-600 hover:bg-blue-50"
+                    onClick={() => onEdit(session.id)}
+                  >
+                    ✎
+                  </button>
                   <button
                     type="button"
                     aria-label={`מחיקת אימון ${templateName} ${date}`}

@@ -10,11 +10,17 @@ const sessions: WorkoutSession[] = [
   { id: 'new', date: '2026-10-20', templateId: 'chest-back-shoulders-cardio', logs: [] },
 ]
 
-function renderScreen(onDelete = vi.fn()) {
+function renderScreen(onDelete = vi.fn(), onEdit = vi.fn()) {
   render(
-    <HistoryScreen sessions={sessions} templates={defaultTemplates} exercises={defaultExercises} onDelete={onDelete} />,
+    <HistoryScreen
+      sessions={sessions}
+      templates={defaultTemplates}
+      exercises={defaultExercises}
+      onEdit={onEdit}
+      onDelete={onDelete}
+    />,
   )
-  return onDelete
+  return { onDelete, onEdit }
 }
 
 describe('HistoryScreen', () => {
@@ -23,7 +29,15 @@ describe('HistoryScreen', () => {
   })
 
   it('shows an empty message when there are no sessions', () => {
-    render(<HistoryScreen sessions={[]} templates={defaultTemplates} exercises={defaultExercises} onDelete={vi.fn()} />)
+    render(
+      <HistoryScreen
+        sessions={[]}
+        templates={defaultTemplates}
+        exercises={defaultExercises}
+        onEdit={vi.fn()}
+        onDelete={vi.fn()}
+      />,
+    )
     expect(screen.getByText('עדיין אין אימונים שמורים')).toBeInTheDocument()
   })
 
@@ -39,7 +53,7 @@ describe('HistoryScreen', () => {
   it('deletes a session after confirming', async () => {
     const user = userEvent.setup()
     vi.spyOn(window, 'confirm').mockReturnValue(true)
-    const onDelete = renderScreen()
+    const { onDelete } = renderScreen()
 
     await user.click(screen.getByRole('button', { name: 'מחיקת אימון רגליים + ידיים 01/10/2026' }))
     expect(window.confirm).toHaveBeenCalled()
@@ -49,9 +63,17 @@ describe('HistoryScreen', () => {
   it('does not delete when the confirmation is cancelled', async () => {
     const user = userEvent.setup()
     vi.spyOn(window, 'confirm').mockReturnValue(false)
-    const onDelete = renderScreen()
+    const { onDelete } = renderScreen()
 
     await user.click(screen.getByRole('button', { name: 'מחיקת אימון רגליים + ידיים 01/10/2026' }))
     expect(onDelete).not.toHaveBeenCalled()
+  })
+
+  it('opens a session for editing', async () => {
+    const user = userEvent.setup()
+    const { onEdit } = renderScreen()
+
+    await user.click(screen.getByRole('button', { name: 'עריכת אימון רגליים + ידיים 01/10/2026' }))
+    expect(onEdit).toHaveBeenCalledWith('old')
   })
 })
