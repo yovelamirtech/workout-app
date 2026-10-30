@@ -2,25 +2,26 @@
 
 [![CI](https://github.com/yovelamirtech/workout-app/actions/workflows/ci.yml/badge.svg)](https://github.com/yovelamirtech/workout-app/actions/workflows/ci.yml)
 
-A simple, mobile-first web app (Hebrew, RTL) for logging gym workouts and knowing what to lift next time.
+A simple, mobile-first web app (Hebrew, RTL) that keeps your **workout plan**: open it at the gym, see today's exercises with the machine and weight to use, and update a weight when you progress.
 
-- Pick today's workout and log the weight you used on each exercise. No reps.
-- One exercise can be done on several machines (cable, plate-loaded machine, dumbbells...). Each machine has its own name, weight and unit (kg, lb, or "other" for a machine-specific number).
-- See what you did **last time** on each machine.
+- Pick a workout and see each exercise as plain text: machine and weight (kg, lb, or "other" for a machine-specific number). Cardio shows speed and incline.
+- Tap "ערוך" on one exercise, change it, tap "שמור". Only that exercise is edited, and the change is saved right away for next time. There is no history and no "finish workout" step.
+- One exercise can be done on several machines; each has its own name, weight and unit.
+- The two default workouts have a fixed exercise list. You can create your own workouts, add or remove exercises (existing ones or new ones you create), rename and delete them.
+- Plans belong to a workout: the same exercise in two workouts keeps separate numbers.
 - Everything is stored locally in the browser (localStorage). No backend, no login.
 
 **Live site:** https://yovelamirtech.github.io/workout-app/
 
 <!-- TODO: add a screenshot, e.g. docs/screenshot.png -->
 
-## Last time
+## The plan
 
-- For each exercise, every machine used before gets a row in the next workout, with its name, unit and last weight.
-- The latest session wins (on the same date, the one saved later). Machines are matched by name, ignoring case and extra spaces.
+- Data is stored under the `workout-plan:v1` key. The old workout log (`workout-log:v1`) is not read: the plan starts from scratch.
+- Saving an exercise trims machine names and drops rows left completely empty.
 - Units are never converted or compared between machines.
-- Data saved before machines existed (sets with reps) is migrated on load: the top weight becomes one unnamed machine in kg.
 
-The logic lives in [`src/lib/lastTime.ts`](src/lib/lastTime.ts) and is fully unit-tested.
+The logic lives in [`src/lib/plan.ts`](src/lib/plan.ts) and is fully unit-tested.
 
 ## Run locally
 

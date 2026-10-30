@@ -1,10 +1,9 @@
-import { formatWeight } from '../lib/history'
 import type { MachineEntry, WeightUnit } from '../lib/types'
+import { fieldClass, toNumber } from './fields'
 
 interface MachineRowProps {
   rowNumber: number
   entry: MachineEntry
-  lastEntry: MachineEntry | null
   onChange: (entry: MachineEntry) => void
   onRemove: () => void
 }
@@ -15,15 +14,7 @@ const UNIT_OPTIONS: { value: WeightUnit; label: string }[] = [
   { value: 'other', label: 'אחר' },
 ]
 
-function toNumber(value: string): number {
-  const number = Number(value)
-  return Number.isFinite(number) && number > 0 ? number : 0
-}
-
-const fieldClass =
-  'w-full min-h-12 rounded-lg border border-slate-300 bg-white px-3 text-lg focus:border-blue-500 focus:outline-none'
-
-export default function MachineRow({ rowNumber, entry, lastEntry, onChange, onRemove }: MachineRowProps) {
+export default function MachineRow({ rowNumber, entry, onChange, onRemove }: MachineRowProps) {
   return (
     <li className="flex flex-col gap-2 rounded-lg border border-slate-200 p-2">
       <div className="flex items-center gap-2">
@@ -75,11 +66,6 @@ export default function MachineRow({ rowNumber, entry, lastEntry, onChange, onRe
           </select>
         </label>
       </div>
-      {lastEntry && (
-        <p className="text-sm text-slate-600">
-          פעם קודמת: <span className="font-semibold">{formatWeight(lastEntry.weight, lastEntry.unit)}</span>
-        </p>
-      )}
     </li>
   )
 }

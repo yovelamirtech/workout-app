@@ -1,89 +1,129 @@
 import { useState } from 'react'
+import AddExercisePanel from '../components/AddExercisePanel'
 import ExerciseCard from '../components/ExerciseCard'
-import { getLastEntries } from '../lib/lastTime'
-import type { Exercise, ExerciseLog, WorkoutSession, WorkoutTemplate } from '../lib/types'
-import { finalizeLogs, getDraftEntries } from '../lib/workout'
+import { fieldClass } from '../components/fields'
+import { addExerciseToWorkout, removeExerciseFromWorkout, updateWorkoutExercise } from '../lib/plan'
+import type { Exercise, ExerciseType, Workout } from '../lib/types'
 
 interface WorkoutScreenProps {
-  template: WorkoutTemplate
-  exercises: Exercise[]
-  sessions: WorkoutSession[]
-  // Logs of a saved workout being edited; omitted for a new workout
-  initialLogs?: ExerciseLog[]
-  onFinish: (logs: ExerciseLog[]) => void
-  onCancel: () => void
+  workout: Workout
+  exercises: Exercise[] // every known exercise, default and custom
+  onUpdate: (workout: Workout) => void
+  onCreateExercise: (name: string, type: ExerciseType) => void
+  onDelete: () => void
+  onBack: () => void
 }
 
 export default function WorkoutScreen({
-  template,
+  workout,
   exercises,
-  sessions,
-  initialLogs,
-  onFinish,
-  onCancel,
+  onUpdate,
+  onCreateExercise,
+  onDelete,
+  onBack,
 }: WorkoutScreenProps) {
-  const templateExercises = template.exerciseIds
-    .map((id) => exercises.find((exercise) => exercise.id === id))
-    .filter((exercise) => exercise !== undefined)
+  const [adding, setAdding] = useState(false)
+  const [newName, setNewName] = useState<string | null>(null) // non-null while renaming
 
-  const lastEntriesByExercise = templateExercises.map((exercise) => getLastEntries(exercise.id, sessions))
+  const items = workout.exercises.flatMap((item) => {
+    const exercise = exercises.find((e) => e.id === item.exerciseId)
+    return exercise ? [{ item, exercise }] : []
+  })
+  const available = exercises.filter((exercise) => !workout.exercises.some((item) => item.exerciseId === exercise.id))
 
-  const [draftLogs, setDraftLogs] = useState<ExerciseLog[]>(() =>
-    templateExercises.map((exercise, index) => {
-      if (!initialLogs) {
-        return {
-          exerciseId: exercise.id,
-          entries: exercise.type === 'cardio' ? [] : getDraftEntries(lastEntriesByExercise[index]),
-        }
-      }
-      // When editing, an exercise that wasn't logged gets an empty row rather than last
-      // time's weights, so saving doesn't add it by accident
-      const saved = initialLogs.find((log) => log.exerciseId === exercise.id)
-      return {
-        exerciseId: exercise.id,
-        entries: exercise.type === 'cardio' ? [] : getDraftEntries(saved?.entries ?? []),
-        ...(saved?.done && { done: true }),
-      }
-    }),
-  )
+  function saveName() {
+    if (newName === null || newName.trim() === '') return
+    onUpdate({ ...workout, name: newName.trim() })
+    setNewName(null)
+  }
 
-  const finishedLogs = finalizeLogs(draftLogs)
-
-  function updateLog(updated: ExerciseLog) {
-    setDraftLogs((logs) => logs.map((log) => (log.exerciseId === updated.exerciseId ? updated : log)))
+  function confirmDelete() {
+    if (window.confirm(`למחוק את האימון "${workout.name}"?`)) onDelete()
   }
 
   return (
     <div className="flex flex-col gap-3">
-      <h2 className="text-xl font-bold">{initialLogs ? `עריכת אימון: ${template.name}` : template.name}</h2>
+      <button
+        type="button"
+        className="min-h-12 self-start rounded-lg px-2 font-semibold text-blue-700 hover:bg-blue-50"
+        onClick={onBack}
+      >
+        → האימונים שלי
+      </button>
 
-      {templateExercises.map((exercise, index) => (
+      {newName === null ? (
+        <h2 className="text-xl font-bold">{workout.name}</h2>
+      ) : (
+        <div className="flex gap-2">
+          <label className="flex-1">
+            <span className="sr-only">שם האימון</span>
+            <input type="text" className={fieldClass} value={newName} onChange={(e) => setNewName(e.target.value)} />
+          </label>
+          <button
+            type="button"
+            className="min-h-12 rounded-lg bg-blue-600 px-4 font-semibold text-white disabled:bg-slate-300"
+            disabled={newName.trim() === ''}
+            onClick={saveName}
+          >
+            שמור
+          </button>
+          <button
+            type="button"
+            className="min-h-12 rounded-lg px-3 font-semibold text-slate-600 hover:bg-slate-200"
+            onClick={() => setNewName(null)}
+          >
+            ביטול
+          </button>
+        </div>
+      )}
+
+      {items.length === 0 && <p className="text-slate-500">אין עדיין תרגילים באימון</p>}
+
+      {items.map(({ item, exercise }) => (
         <ExerciseCard
-          key={exercise.id}
+          key={item.exerciseId}
           exercise={exercise}
-          log={draftLogs[index]}
-          lastEntries={lastEntriesByExercise[index]}
-          onChange={updateLog}
+          item={item}
+          onSave={(updated) => onUpdate(updateWorkoutExercise(workout, updated))}
+          onRemove={workout.builtIn ? undefined : () => onUpdate(removeExerciseFromWorkout(workout, item.exerciseId))}
         />
       ))}
 
-      <div className="sticky bottom-0 -mx-4 flex gap-2 bg-slate-100/95 px-4 py-3">
-        <button
-          type="button"
-          className="min-h-12 flex-1 rounded-lg bg-blue-600 text-lg font-semibold text-white disabled:bg-slate-300"
-          disabled={finishedLogs.length === 0}
-          onClick={() => onFinish(finishedLogs)}
-        >
-          {initialLogs ? 'שמירת שינויים' : 'סיום ושמירה'}
-        </button>
-        <button
-          type="button"
-          className="min-h-12 rounded-lg px-4 font-semibold text-slate-600 hover:bg-slate-200"
-          onClick={onCancel}
-        >
-          ביטול
-        </button>
-      </div>
+      {!workout.builtIn &&
+        (adding ? (
+          <AddExercisePanel
+            available={available}
+            onAdd={(exerciseId) => onUpdate(addExerciseToWorkout(workout, exerciseId))}
+            onCreate={onCreateExercise}
+            onClose={() => setAdding(false)}
+          />
+        ) : (
+          <>
+            <button
+              type="button"
+              className="min-h-12 w-full rounded-lg border-2 border-dashed border-blue-300 font-semibold text-blue-700 hover:bg-blue-50"
+              onClick={() => setAdding(true)}
+            >
+              + הוספת תרגיל
+            </button>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                className="min-h-12 flex-1 rounded-lg font-semibold text-slate-600 hover:bg-slate-200"
+                onClick={() => setNewName(workout.name)}
+              >
+                שינוי שם
+              </button>
+              <button
+                type="button"
+                className="min-h-12 flex-1 rounded-lg font-semibold text-red-600 hover:bg-red-50"
+                onClick={confirmDelete}
+              >
+                מחיקת אימון
+              </button>
+            </div>
+          </>
+        ))}
     </div>
   )
 }

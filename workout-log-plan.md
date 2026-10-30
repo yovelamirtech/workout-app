@@ -21,11 +21,11 @@ A simple, mobile-first web app for logging gym workouts and knowing what to lift
 
 ## Product
 
-The user picks today's workout (e.g. "Legs + Arms") and logs **only the weight** (no reps) for each exercise.
+**Changed on 2026-10-30 (Phase 1c): the app is a workout plan, not a log.** There is no history and no "finish workout". The user opens a workout at the gym and sees, for each exercise, the machine and weight to use. When they progress, they tap "ערוך" on that one exercise, change it, tap "שמור", and it is saved for next time. The goal is as little friction as possible.
 
-One exercise can be done on several machines that work the same muscle (a cable machine, a plate-loaded machine, plain dumbbells...). Each has different numbers and mechanics, so each exercise holds one weight per machine, with a machine name and unit typed by the user. Units: kg, lb, or "other" (a machine-specific number, shown without a unit). Units are never converted or compared between machines.
+One exercise can be done on several machines that work the same muscle (a cable machine, a plate-loaded machine, plain dumbbells...). Each has different numbers and mechanics, so each exercise holds one weight per machine, with a machine name and unit typed by the user. Units: kg, lb, or "other" (a machine-specific number, shown without a unit). Units are never converted or compared between machines. Cardio exercises hold speed (km/h) and incline (%).
 
-For each machine the user sees what they did **last time**. There is no suggested weight (owner decision, 2026-10-27).
+The two default workouts are built in: their exercise list is fixed and they can't be renamed or deleted. The user can create workouts, add exercises to them (from the existing list or a new exercise with a name and type), remove exercises, rename and delete them. Plans belong to a workout: the same exercise in two workouts keeps separate numbers.
 
 Everything is stored locally in the browser. No backend, no login.
 
@@ -53,7 +53,7 @@ Install current stable versions and check the official docs for setup. Don't rel
 - **Storage is behind one small module** (`src/lib/storage.ts`) so it can be swapped later (e.g. for sync).
 - **Simple over clever.** No state-management libraries in the MVP. Use `useState` / `useReducer`, and context only if really needed.
 - Every pure function has unit tests. Every main user flow has at least one component test.
-- Tests sit next to the code (`lastTime.ts` + `lastTime.test.ts`).
+- Tests sit next to the code (`plan.ts` + `plan.test.ts`).
 
 ### Suggested structure
 
@@ -61,29 +61,28 @@ Install current stable versions and check the official docs for setup. Don't rel
 src/
   lib/
     types.ts
-    lastTime.ts         + lastTime.test.ts
-    history.ts          + history.test.ts
+    plan.ts             + plan.test.ts      (formatting, cleaning machines, workout changes)
     storage.ts          + storage.test.ts
-    workout.ts          + workout.test.ts   (draft rows for a new workout, cleaning logs before save)
   data/
-    defaultTemplates.ts
+    defaultWorkouts.ts
   components/
-    ExerciseCard.tsx
+    ExerciseCard.tsx    (view the plan, edit one exercise)
     MachineRow.tsx
+    AddExercisePanel.tsx
+    fields.ts
   screens/
     HomeScreen.tsx
     WorkoutScreen.tsx
-    HistoryScreen.tsx
   App.tsx
 .github/workflows/ci.yml
 ```
 
 ---
 
-## Data model (starting point)
+## Data model
 
 ```ts
-type ExerciseType = 'weight' | 'cardio';   // 'bodyweight' was removed together with reps
+type ExerciseType = 'weight' | 'cardio';
 
 interface Exercise {
   id: string;
@@ -91,66 +90,57 @@ interface Exercise {
   type: ExerciseType;
 }
 
-interface WorkoutTemplate {
-  id: string;
-  name: string;            // e.g. "רגליים + ידיים"
-  exerciseIds: string[];
-}
-
 type WeightUnit = 'kg' | 'lb' | 'other';   // 'other' = machine-specific number, no unit shown
 
 interface MachineEntry {
   machine: string;         // typed by the user, may be empty
-  weight: number;
+  weight: number;          // 0 = not set yet
   unit: WeightUnit;
 }
 
-interface ExerciseLog {
-  exerciseId: string;
-  entries: MachineEntry[]; // one weight per machine used
-  done?: boolean;          // cardio in the MVP: a simple "done" checkbox
-  // cardio (Phase 2): durationMin, speedKmh, inclinePct
+interface CardioPlan {
+  speedKmh: number;        // 0 = not set
+  inclinePct: number;      // 0 = not set
 }
 
-interface WorkoutSession {
+interface WorkoutExercise {  // one exercise in a workout, with its plan
+  exerciseId: string;
+  machines: MachineEntry[];  // weight exercises
+  cardio?: CardioPlan;       // cardio exercises
+}
+
+interface Workout {
   id: string;
-  date: string;            // ISO date, YYYY-MM-DD
-  templateId: string;
-  logs: ExerciseLog[];
+  name: string;            // e.g. "רגליים + ידיים"
+  builtIn: boolean;        // default workouts: fixed exercises, no rename/delete
+  exercises: WorkoutExercise[];
 }
 ```
 
-Store everything under one versioned localStorage key, e.g. `workout-log:v1`.
+Stored as `{ workouts, customExercises }` under `workout-plan:v1`. On first load (or corrupt data) the default workouts are used with an empty plan. The old log key `workout-log:v1` is not read or deleted.
 
-Old logs saved with `sets: { weightKg, reps }[]` are migrated in `loadSessions`: the top weight becomes one unnamed machine in kg.
-
-### Default templates (seed data)
+### Default workouts (seed data)
 
 - **רגליים + ידיים:** squat / leg press, leg curl, leg extension, calves, cable biceps curl, cable triceps extension
-- **חזה, גב, כתפיים + קרדיו:** bench press, lat pulldown, machine fly, machine row, cable lateral raise, incline walk (cardio; in the MVP it can be a simple "done" checkbox)
+- **חזה, גב, כתפיים + קרדיו:** bench press, lat pulldown, machine fly, machine row, cable lateral raise, incline walk (cardio: speed and incline)
 
 ---
 
-## Core rule: last time
+## Core rules: the plan (`src/lib/plan.ts`)
 
-`getLastEntries(exerciseId, sessions)` returns the latest entry for each machine used for this exercise, most recently used first:
+- `formatMachine`: "כבל: 40 ק״ג"; without a name just the weight; without a weight "כבל: —".
+- `formatCardio`: "מהירות 5.5 קמ״ש · שיפוע 12%", only the parts that are set, or `null`.
+- `cleanMachines`: on save, trims names and drops rows with no name and no weight.
+- `updateWorkoutExercise`, `addExerciseToWorkout` (at most once), `removeExerciseFromWorkout`, `createWorkout`, `createExercise`.
 
-- Sessions may be unsorted; the newest date wins. On the same date, the session saved later wins.
-- Machines are matched by name, ignoring case and extra spaces (`machineKey`).
-- Each machine keeps its own unit.
-
-A new workout gets one empty row per machine from `getLastEntries` (same name and unit), or one empty row if there is no history. Rows without a weight are dropped on save.
-
-The progression rule (reps reached target → + 2.5 kg) was removed on 2026-10-27, because the owner does not log reps.
-
-These functions are the heart of the testing lesson. Cover them well: empty history, unsorted sessions, several machines, same-date sessions, name matching, units.
+The "last time" rule (`lastTime.ts`) and the history were removed on 2026-10-30 together with the log.
 
 ---
 
 ## Class demo idea (CI/CD)
 
 1. Show green CI and the live GitHub Pages site.
-2. On a branch, break the rule on purpose (e.g. in `machineKey` remove `.toLowerCase()`, or in `getLastEntries` stop sorting sessions), push, and open a PR. CI goes red and the PR shows a failing check.
+2. On a branch, break the rule on purpose (e.g. in `formatWeight` swap the unit labels, or make `cleanMachines` drop rows without a weight), push, and open a PR. CI goes red and the PR shows a failing check.
 3. Fix it, push, and CI goes green. Merge, and the site redeploys automatically.
 
 ---
@@ -187,21 +177,30 @@ These functions are the heart of the testing lesson. Cover them well: empty hist
 |---|------|-----------|--------|---------------------|
 | 1b.1 | Weight only, several machines per exercise | no reps anywhere; each exercise logs a weight per machine (name, weight, unit kg/lb/other); "last time" per machine; old data migrated | ✅ | Removed reps, `bodyweight`, `targetReps`, `incrementKg`, `suggestNext` and the "suggested today" line. `progression.ts` replaced by `lastTime.ts`; `SetRow` replaced by `MachineRow`. One weight per machine per workout. Machine names are free text; an empty name is allowed (shown as just the weight). |
 
+| 1b.2 | Prefill last weights, delete and edit history | | ✅ | PRs #2, #3. Superseded by 1c.1. |
+
+### Phase 1c — Workout plan instead of a log (owner change, 2026-10-30)
+
+| # | Task | Done when | Status | Notes / what's left |
+|---|------|-----------|--------|---------------------|
+| 1c.1 | Plan, not log | no history; workout screen shows each exercise as text (machine, weight, unit; cardio speed and incline); "ערוך" edits one exercise and saves it right away | ✅ | Removed `HistoryScreen`, `history.ts`, `lastTime.ts`, `workout.ts` and the "finish" step. New `plan.ts`, new storage key `workout-plan:v1` (starts from scratch). Plans are per workout, not shared between workouts. |
+| 1c.2 | Custom workouts | create, rename, delete workouts; add (existing or new) and remove exercises; built-in workouts stay fixed | ✅ | Custom exercises are kept in the library even when removed from a workout; there is no UI to delete or rename them yet. No reordering. |
+
 **🛑 Stop here until the owner says to continue.**
 
 ### Phase 2 — A genuinely useful app
 
 | # | Task | Done when | Status | Notes / what's left |
 |---|------|-----------|--------|---------------------|
-| 2.1 | Manage templates | create, rename, delete templates; add, remove and reorder exercises | ⬜ | |
-| 2.2 | Exercise library | add custom exercises with type and muscle group | ⬜ | |
-| 2.3 | Edit and delete past sessions | with a confirmation before delete | ⬜ | |
-| 2.4 | Real cardio logging | duration, speed, incline; "last time" shown for cardio too | ⬜ | |
+| 2.1 | Manage templates | create, rename, delete templates; add, remove and reorder exercises | 🟡 | Done in 1c.2 except reordering. |
+| 2.2 | Exercise library | add custom exercises with type and muscle group | 🟡 | Add with name and type done in 1c.2. Left: muscle group, rename/delete custom exercises. |
+| 2.3 | Edit and delete past sessions | with a confirmation before delete | ⏸️ | No history since 1c.1. |
+| 2.4 | Real cardio logging | duration, speed, incline; "last time" shown for cardio too | 🟡 | Speed and incline in the plan since 1c.1. Left: duration, if wanted. |
 | 2.5 | Rest timer | starts after a set is logged; configurable length; sound or vibration where supported | ⬜ | |
 | 2.6 | Double progression (rep range) | per-exercise range (e.g. 8–12): add reps until the top of the range, then add weight and drop to the bottom; fully unit-tested | ⏸️ | Not relevant since 1b.1: the owner does not log reps. |
 | 2.7 | Stall detection | failing the target 3 sessions in a row → suggest a ~10% deload; tested | ⏸️ | Not relevant since 1b.1: needs reps. |
-| 2.8 | Draft workout survives refresh | in-progress workout auto-saved and restored | ⬜ | |
-| 2.9 | Copy last workout | one tap pre-fills today's sets from last time | ⬜ | |
+| 2.8 | Draft workout survives refresh | in-progress workout auto-saved and restored | ⏸️ | Not relevant since 1c.1: every save is immediate. |
+| 2.9 | Copy last workout | one tap pre-fills today's sets from last time | ⏸️ | Not relevant since 1c.1. |
 
 ### Phase 3 — Insights
 
@@ -244,3 +243,4 @@ Add one line at the end of every session.
 | 2026-10-23 | Claude Code (Opus 5.5) | Phase 0 + Phase 1 code: scaffold, Tailwind/RTL, Vitest, ESLint, CI + Pages workflow, lib (progression, history, storage, workout), Home/Workout/History screens, README. lint, test (49 tests) and build pass. | Create the GitHub repo and push; enable Pages; fill in `<OWNER>` and the screenshot in README (0.5, 0.6, 1.8). Owner to review names. |
 | 2026-10-23 | Claude Code (Opus 5.5) | Created the public GitHub repo `yovelamirtech/workout-app`, enabled Pages (GitHub Actions), pushed `main`. CI green, site deployed and checked live. | Class demo: failing test on a branch → red PR (finishes 0.5); README screenshot (1.8). |
 | 2026-10-27 | Claude Code | Owner change 1b.1: weight only (no reps), several machines per exercise with name + weight + unit (kg/lb/other), "last time" per machine, no suggestion. Migration of old sets data on load. lint, test (44 tests) and build pass. | Owner to try it on the phone. Class demo (0.5) now breaks `lastTime.ts` instead of the progression rule. |
+| 2026-10-30 | Claude Code | Owner change 1c: the app is now a workout plan. No history; each exercise is shown as text and edited on its own ("ערוך" → "שמור"); cardio has speed and incline; custom workouts (create, rename, delete, add/remove exercises, new exercises). Plans per workout. New storage key, starts from scratch. lint, test (35 tests) and build pass. | Owner to try it on the phone. |

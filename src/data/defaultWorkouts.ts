@@ -1,4 +1,4 @@
-import type { Exercise, WorkoutTemplate } from '../lib/types'
+import type { Exercise, Workout } from '../lib/types'
 
 export const defaultExercises: Exercise[] = [
   { id: 'squat-leg-press', name: 'סקוואט / לחיצת רגליים', type: 'weight' },
@@ -15,29 +15,26 @@ export const defaultExercises: Exercise[] = [
   { id: 'incline-walk', name: 'הליכה בשיפוע', type: 'cardio' },
 ]
 
-export const defaultTemplates: WorkoutTemplate[] = [
-  {
-    id: 'legs-arms',
-    name: 'רגליים + ידיים',
-    exerciseIds: [
-      'squat-leg-press',
-      'leg-curl',
-      'leg-extension',
-      'calf-raise',
-      'cable-biceps-curl',
-      'cable-triceps-extension',
-    ],
-  },
-  {
-    id: 'chest-back-shoulders-cardio',
-    name: 'חזה, גב, כתפיים + קרדיו',
-    exerciseIds: [
-      'bench-press',
-      'lat-pulldown',
-      'machine-fly',
-      'machine-row',
-      'cable-lateral-raise',
-      'incline-walk',
-    ],
-  },
+function builtInWorkout(id: string, name: string, exerciseIds: string[]): Workout {
+  return { id, name, builtIn: true, exercises: exerciseIds.map((exerciseId) => ({ exerciseId, machines: [] })) }
+}
+
+// Starts with no machines or weights: the user fills in the plan
+export const defaultWorkouts: Workout[] = [
+  builtInWorkout('legs-arms', 'רגליים + ידיים', [
+    'squat-leg-press',
+    'leg-curl',
+    'leg-extension',
+    'calf-raise',
+    'cable-biceps-curl',
+    'cable-triceps-extension',
+  ]),
+  builtInWorkout('chest-back-shoulders-cardio', 'חזה, גב, כתפיים + קרדיו', [
+    'bench-press',
+    'lat-pulldown',
+    'machine-fly',
+    'machine-row',
+    'cable-lateral-raise',
+    'incline-walk',
+  ]),
 ]
