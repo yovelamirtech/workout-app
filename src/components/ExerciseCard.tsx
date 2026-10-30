@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
+import type { MouseEvent, PointerEvent } from 'react'
 import { cleanMachines, emptyMachineEntry, formatCardio, formatMachine } from '../lib/plan'
 import type { CardioPlan, Exercise, MachineEntry, WorkoutExercise } from '../lib/types'
 import { fieldClass, toNumber } from './fields'
@@ -13,13 +14,33 @@ interface ExerciseCardProps {
 }
 
 const NOT_SET = 'לא הוגדר עדיין'
+// A touch that moves more than this (in px) is a scroll, not a tap
+const TAP_SLOP = 10
 
-// Shows the plan for one exercise; "ערוך" opens an editor for this exercise only
+// Shows the plan for one exercise; tapping the card (or "ערוך") opens an editor for this exercise only
 export default function ExerciseCard({ exercise, item, onSave, onRemove }: ExerciseCardProps) {
   const [editing, setEditing] = useState(false)
+  const pointerStart = useRef<{ x: number; y: number } | null>(null)
+
+  function rememberPointerStart(e: PointerEvent) {
+    pointerStart.current = { x: e.clientX, y: e.clientY }
+  }
+
+  // Browsers usually skip the click after a scroll, but some still fire it, so check the distance too
+  function openOnTap(e: MouseEvent) {
+    const start = pointerStart.current
+    pointerStart.current = null
+    if (start && Math.hypot(e.clientX - start.x, e.clientY - start.y) > TAP_SLOP) return
+    setEditing(true)
+  }
 
   return (
-    <section aria-label={exercise.name} className="rounded-xl bg-white p-4 shadow-sm">
+    <section
+      aria-label={exercise.name}
+      className={`rounded-xl bg-white p-4 shadow-sm ${editing ? '' : 'cursor-pointer active:bg-slate-50'}`}
+      onPointerDown={editing ? undefined : rememberPointerStart}
+      onClick={editing ? undefined : openOnTap}
+    >
       <div className="flex items-center justify-between gap-2">
         <h3 className="text-lg font-semibold">{exercise.name}</h3>
         {!editing && (
@@ -134,7 +155,10 @@ function ExerciseEditor({ exercise, item, onSave, onCancel, onRemove }: Exercise
                   rowNumber={index + 1}
                   entry={entry}
                   onChange={(updated) => setMachines(machines.map((e, i) => (i === index ? updated : e)))}
-                  onRemove={() => setMachines(machines.filter((_, i) => i !== index))}
+                  // The last machine stays: clear its fields instead (an empty row is dropped on save)
+                  onRemove={
+                    machines.length > 1 ? () => setMachines(machines.filter((_, i) => i !== index)) : undefined
+                  }
                 />
               ))}
             </ol>

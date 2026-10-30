@@ -5,7 +5,7 @@ interface MachineRowProps {
   rowNumber: number
   entry: MachineEntry
   onChange: (entry: MachineEntry) => void
-  onRemove: () => void
+  onRemove?: () => void // omitted when this row can't be removed
 }
 
 const UNIT_OPTIONS: { value: WeightUnit; label: string }[] = [
@@ -31,7 +31,8 @@ export default function MachineRow({ rowNumber, entry, onChange, onRemove }: Mac
         <button
           type="button"
           aria-label={`מחיקת מכונה ${rowNumber}`}
-          className="min-h-12 min-w-12 rounded-lg text-2xl text-red-600 hover:bg-red-50"
+          className="min-h-12 min-w-12 rounded-lg text-2xl text-red-600 hover:bg-red-50 disabled:text-slate-300 disabled:hover:bg-transparent"
+          disabled={!onRemove}
           onClick={onRemove}
         >
           ×
