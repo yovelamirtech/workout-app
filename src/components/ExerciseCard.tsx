@@ -1,70 +1,180 @@
-import { findLastEntry } from '../lib/lastTime'
-import type { Exercise, ExerciseLog, MachineEntry } from '../lib/types'
-import { emptyMachineEntry } from '../lib/workout'
+import { useState } from 'react'
+import { cleanMachines, emptyMachineEntry, formatCardio, formatMachine } from '../lib/plan'
+import type { CardioPlan, Exercise, MachineEntry, WorkoutExercise } from '../lib/types'
+import { fieldClass, toNumber } from './fields'
 import MachineRow from './MachineRow'
 
 interface ExerciseCardProps {
   exercise: Exercise
-  log: ExerciseLog
-  lastEntries: MachineEntry[]
-  onChange: (log: ExerciseLog) => void
+  item: WorkoutExercise
+  onSave: (item: WorkoutExercise) => void
+  // Only for exercises the user may remove (workouts they created)
+  onRemove?: () => void
 }
 
-export default function ExerciseCard({ exercise, log, lastEntries, onChange }: ExerciseCardProps) {
-  if (exercise.type === 'cardio') {
-    return (
-      <section aria-label={exercise.name} className="rounded-xl bg-white p-4 shadow-sm">
-        <label className="flex min-h-12 items-center gap-3 text-lg font-semibold">
-          <input
-            type="checkbox"
-            className="size-6 accent-blue-600"
-            checked={log.done ?? false}
-            onChange={(e) => onChange({ ...log, done: e.target.checked })}
-          />
-          {exercise.name}
-        </label>
-      </section>
-    )
-  }
+const NOT_SET = 'לא הוגדר עדיין'
 
-  function updateEntry(index: number, entry: MachineEntry) {
-    onChange({ ...log, entries: log.entries.map((e, i) => (i === index ? entry : e)) })
-  }
-
-  function removeEntry(index: number) {
-    onChange({ ...log, entries: log.entries.filter((_, i) => i !== index) })
-  }
-
-  function addEntry() {
-    onChange({ ...log, entries: [...log.entries, emptyMachineEntry()] })
-  }
+// Shows the plan for one exercise; "ערוך" opens an editor for this exercise only
+export default function ExerciseCard({ exercise, item, onSave, onRemove }: ExerciseCardProps) {
+  const [editing, setEditing] = useState(false)
 
   return (
     <section aria-label={exercise.name} className="rounded-xl bg-white p-4 shadow-sm">
-      <h2 className="text-lg font-semibold">{exercise.name}</h2>
+      <div className="flex items-center justify-between gap-2">
+        <h3 className="text-lg font-semibold">{exercise.name}</h3>
+        {!editing && (
+          <button
+            type="button"
+            aria-label={`עריכת ${exercise.name}`}
+            className="min-h-12 rounded-lg px-4 font-semibold text-blue-700 hover:bg-blue-50"
+            onClick={() => setEditing(true)}
+          >
+            ערוך
+          </button>
+        )}
+      </div>
 
-      {log.entries.length > 0 && (
-        <ol className="mt-3 flex flex-col gap-2">
-          {log.entries.map((entry, index) => (
-            <MachineRow
-              key={index}
-              rowNumber={index + 1}
-              entry={entry}
-              lastEntry={findLastEntry(entry.machine, lastEntries)}
-              onChange={(updated) => updateEntry(index, updated)}
-              onRemove={() => removeEntry(index)}
+      {editing ? (
+        <ExerciseEditor
+          exercise={exercise}
+          item={item}
+          onSave={(updated) => {
+            onSave(updated)
+            setEditing(false)
+          }}
+          onCancel={() => setEditing(false)}
+          onRemove={onRemove}
+        />
+      ) : (
+        <PlanView exercise={exercise} item={item} />
+      )}
+    </section>
+  )
+}
+
+function PlanView({ exercise, item }: { exercise: Exercise; item: WorkoutExercise }) {
+  if (exercise.type === 'cardio') {
+    return <p className="mt-1 text-lg">{formatCardio(item.cardio) ?? <NotSet />}</p>
+  }
+  if (item.machines.length === 0) return <NotSet />
+  return (
+    <ul className="mt-1 flex flex-col gap-1">
+      {item.machines.map((entry, index) => (
+        <li key={index} className="text-lg">
+          {formatMachine(entry)}
+        </li>
+      ))}
+    </ul>
+  )
+}
+
+function NotSet() {
+  return <span className="mt-1 block text-slate-500">{NOT_SET}</span>
+}
+
+interface ExerciseEditorProps {
+  exercise: Exercise
+  item: WorkoutExercise
+  onSave: (item: WorkoutExercise) => void
+  onCancel: () => void
+  onRemove?: () => void
+}
+
+function ExerciseEditor({ exercise, item, onSave, onCancel, onRemove }: ExerciseEditorProps) {
+  // An exercise with no machines yet opens with one empty row, ready to type into
+  const [machines, setMachines] = useState<MachineEntry[]>(() =>
+    item.machines.length > 0 ? item.machines.map((entry) => ({ ...entry })) : [emptyMachineEntry()],
+  )
+  const [cardio, setCardio] = useState<CardioPlan>(() => item.cardio ?? { speedKmh: 0, inclinePct: 0 })
+
+  function save() {
+    onSave(exercise.type === 'cardio' ? { ...item, cardio } : { ...item, machines: cleanMachines(machines) })
+  }
+
+  function remove() {
+    if (onRemove && window.confirm(`להסיר את ${exercise.name} מהאימון?`)) onRemove()
+  }
+
+  return (
+    <div className="mt-3 flex flex-col gap-3">
+      {exercise.type === 'cardio' ? (
+        <div className="flex gap-2">
+          <label className="flex-1">
+            <span className="text-sm text-slate-600">מהירות (קמ״ש)</span>
+            <input
+              type="number"
+              inputMode="decimal"
+              step="any"
+              min="0"
+              className={`${fieldClass} text-center`}
+              value={cardio.speedKmh || ''}
+              onChange={(e) => setCardio({ ...cardio, speedKmh: toNumber(e.target.value) })}
             />
-          ))}
-        </ol>
+          </label>
+          <label className="flex-1">
+            <span className="text-sm text-slate-600">שיפוע (%)</span>
+            <input
+              type="number"
+              inputMode="decimal"
+              step="any"
+              min="0"
+              className={`${fieldClass} text-center`}
+              value={cardio.inclinePct || ''}
+              onChange={(e) => setCardio({ ...cardio, inclinePct: toNumber(e.target.value) })}
+            />
+          </label>
+        </div>
+      ) : (
+        <>
+          {machines.length > 0 && (
+            <ol className="flex flex-col gap-2">
+              {machines.map((entry, index) => (
+                <MachineRow
+                  key={index}
+                  rowNumber={index + 1}
+                  entry={entry}
+                  onChange={(updated) => setMachines(machines.map((e, i) => (i === index ? updated : e)))}
+                  onRemove={() => setMachines(machines.filter((_, i) => i !== index))}
+                />
+              ))}
+            </ol>
+          )}
+          <button
+            type="button"
+            className="min-h-12 w-full rounded-lg border-2 border-dashed border-blue-300 font-semibold text-blue-700 hover:bg-blue-50"
+            onClick={() => setMachines([...machines, emptyMachineEntry()])}
+          >
+            + הוספת מכונה
+          </button>
+        </>
       )}
 
-      <button
-        type="button"
-        className="mt-3 min-h-12 w-full rounded-lg border-2 border-dashed border-blue-300 font-semibold text-blue-700 hover:bg-blue-50"
-        onClick={addEntry}
-      >
-        + הוספת מכונה
-      </button>
-    </section>
+      <div className="flex gap-2">
+        <button
+          type="button"
+          className="min-h-12 flex-1 rounded-lg bg-blue-600 text-lg font-semibold text-white"
+          onClick={save}
+        >
+          שמור
+        </button>
+        <button
+          type="button"
+          className="min-h-12 rounded-lg px-4 font-semibold text-slate-600 hover:bg-slate-200"
+          onClick={onCancel}
+        >
+          ביטול
+        </button>
+      </div>
+
+      {onRemove && (
+        <button
+          type="button"
+          className="min-h-12 rounded-lg font-semibold text-red-600 hover:bg-red-50"
+          onClick={remove}
+        >
+          הסרה מהאימון
+        </button>
+      )}
+    </div>
   )
 }

@@ -1,101 +1,77 @@
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it } from 'vitest'
 import App from './App'
-import { loadSessions } from './lib/storage'
+import { loadData } from './lib/storage'
 
 describe('App', () => {
-  it('start → log a machine weight → finish → appears in history and storage', async () => {
+  it('edits a weight in a workout, saves it, and shows it the next time the workout is opened', async () => {
     const user = userEvent.setup()
-    render(<App />)
+    const { unmount } = render(<App />)
 
     await user.click(screen.getByRole('button', { name: /רגליים \+ ידיים/ }))
+    const curl = screen.getByRole('region', { name: 'כפיפת מרפקים בכבל' })
+    await user.click(within(curl).getByRole('button', { name: 'עריכת כפיפת מרפקים בכבל' }))
+    await user.type(within(curl).getByLabelText('שם מכונה 1'), 'כבל')
+    await user.type(within(curl).getByLabelText('משקל מכונה 1'), '12.5')
+    await user.click(within(curl).getByRole('button', { name: 'שמור' }))
+    expect(within(curl).getByText('כבל: 12.5 ק״ג')).toBeInTheDocument()
 
-    const legCurl = screen.getByRole('region', { name: 'כפיפת ברכיים' })
-    await user.type(within(legCurl).getByLabelText('שם מכונה 1'), 'כבל')
-    await user.type(within(legCurl).getByLabelText('משקל מכונה 1'), '40')
-    await user.click(screen.getByRole('button', { name: 'סיום ושמירה' }))
-
-    expect(screen.getByRole('heading', { name: 'היסטוריה' })).toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: 'רגליים + ידיים' })).toBeInTheDocument()
-    expect(screen.getByText('כפיפת ברכיים: כבל 40 ק״ג')).toBeInTheDocument()
-
-    const saved = loadSessions()
-    expect(saved).toHaveLength(1)
-    expect(saved[0].logs).toEqual([
-      { exerciseId: 'leg-curl', entries: [{ machine: 'כבל', weight: 40, unit: 'kg' }] },
+    const saved = loadData().workouts.find((w) => w.id === 'legs-arms')
+    expect(saved?.exercises.find((e) => e.exerciseId === 'cable-biceps-curl')?.machines).toEqual([
+      { machine: 'כבל', weight: 12.5, unit: 'kg' },
     ])
+
+    // Reopening the app shows the saved plan
+    unmount()
+    render(<App />)
+    await user.click(screen.getByRole('button', { name: /רגליים \+ ידיים/ }))
+    expect(screen.getByText('כבל: 12.5 ק״ג')).toBeInTheDocument()
   })
 
-  it('next workout is prefilled with each machine from last time and its weight', async () => {
+  it('creates a workout, adds a new exercise to it, and goes back home', async () => {
     const user = userEvent.setup()
     render(<App />)
 
-    await user.click(screen.getByRole('button', { name: /רגליים \+ ידיים/ }))
-    const legCurl = screen.getByRole('region', { name: 'כפיפת ברכיים' })
-    await user.type(within(legCurl).getByLabelText('שם מכונה 1'), 'כבל')
-    await user.type(within(legCurl).getByLabelText('משקל מכונה 1'), '40')
-    await user.click(within(legCurl).getByRole('button', { name: /הוספת מכונה/ }))
-    await user.type(within(legCurl).getByLabelText('שם מכונה 2'), 'מכונה')
-    await user.type(within(legCurl).getByLabelText('משקל מכונה 2'), '90')
-    await user.selectOptions(within(legCurl).getByLabelText('יחידה מכונה 2'), 'lb')
-    await user.click(screen.getByRole('button', { name: 'סיום ושמירה' }))
+    await user.click(screen.getByRole('button', { name: '+ אימון חדש' }))
+    await user.type(screen.getByLabelText('שם האימון החדש'), 'גב')
+    await user.click(screen.getByRole('button', { name: 'יצירה' }))
+    expect(screen.getByRole('heading', { name: 'גב' })).toBeInTheDocument()
 
-    await user.click(screen.getByRole('button', { name: 'אימון חדש' }))
-    await user.click(screen.getByRole('button', { name: /רגליים \+ ידיים/ }))
+    await user.click(screen.getByRole('button', { name: '+ הוספת תרגיל' }))
+    await user.click(screen.getByRole('button', { name: '+ פולי עליון' }))
+    await user.type(screen.getByLabelText('שם התרגיל החדש'), 'מתח')
+    await user.click(screen.getByRole('button', { name: 'יצירה והוספה' }))
+    expect(screen.getByRole('region', { name: 'פולי עליון' })).toBeInTheDocument()
+    expect(screen.getByRole('region', { name: 'מתח' })).toBeInTheDocument()
 
-    const nextLegCurl = screen.getByRole('region', { name: 'כפיפת ברכיים' })
-    expect(within(nextLegCurl).getByLabelText('שם מכונה 1')).toHaveValue('כבל')
-    expect(within(nextLegCurl).getByLabelText('משקל מכונה 1')).toHaveValue(40)
-    expect(within(nextLegCurl).getByText('40 ק״ג')).toBeInTheDocument()
-    expect(within(nextLegCurl).getByLabelText('שם מכונה 2')).toHaveValue('מכונה')
-    expect(within(nextLegCurl).getByLabelText('משקל מכונה 2')).toHaveValue(90)
-    expect(within(nextLegCurl).getByLabelText('יחידה מכונה 2')).toHaveValue('lb')
-    expect(within(nextLegCurl).getByText('90 פאונד')).toBeInTheDocument()
+    const data = loadData()
+    expect(data.customExercises).toEqual([{ id: expect.any(String), name: 'מתח', type: 'weight' }])
+    expect(data.workouts.at(-1)?.exercises.map((e) => e.exerciseId)).toEqual([
+      'lat-pulldown',
+      data.customExercises[0].id,
+    ])
+
+    await user.click(screen.getByRole('button', { name: '→ האימונים שלי' }))
+    expect(screen.getByRole('button', { name: /גב\s*2 תרגילים/ })).toBeInTheDocument()
   })
 
-  it('deletes a workout from history and storage', async () => {
-    const user = userEvent.setup()
-    vi.spyOn(window, 'confirm').mockReturnValue(true)
-    render(<App />)
-
-    await user.click(screen.getByRole('button', { name: /רגליים \+ ידיים/ }))
-    const legCurl = screen.getByRole('region', { name: 'כפיפת ברכיים' })
-    await user.type(within(legCurl).getByLabelText('משקל מכונה 1'), '40')
-    await user.click(screen.getByRole('button', { name: 'סיום ושמירה' }))
-
-    await user.click(screen.getByRole('button', { name: /מחיקת אימון רגליים \+ ידיים/ }))
-    expect(screen.getByText('עדיין אין אימונים שמורים')).toBeInTheDocument()
-    expect(loadSessions()).toEqual([])
-    vi.restoreAllMocks()
-  })
-
-  it('edits a workout from history and saves it to storage', async () => {
+  it('keeps plans separate when the same exercise is in two workouts', async () => {
     const user = userEvent.setup()
     render(<App />)
 
-    await user.click(screen.getByRole('button', { name: /רגליים \+ ידיים/ }))
-    const legCurl = screen.getByRole('region', { name: 'כפיפת ברכיים' })
-    await user.type(within(legCurl).getByLabelText('משקל מכונה 1'), '40')
-    await user.click(screen.getByRole('button', { name: 'סיום ושמירה' }))
+    await user.click(screen.getByRole('button', { name: '+ אימון חדש' }))
+    await user.type(screen.getByLabelText('שם האימון החדש'), 'חזה')
+    await user.click(screen.getByRole('button', { name: 'יצירה' }))
+    await user.click(screen.getByRole('button', { name: '+ הוספת תרגיל' }))
+    await user.click(screen.getByRole('button', { name: '+ לחיצת חזה' }))
+    await user.click(screen.getByRole('button', { name: 'עריכת לחיצת חזה' }))
+    await user.type(screen.getByLabelText('משקל מכונה 1'), '50')
+    await user.click(screen.getByRole('button', { name: 'שמור' }))
 
-    await user.click(screen.getByRole('button', { name: /עריכת אימון רגליים \+ ידיים/ }))
-    const editedLegCurl = screen.getByRole('region', { name: 'כפיפת ברכיים' })
-    expect(within(editedLegCurl).getByLabelText('משקל מכונה 1')).toHaveValue(40)
-    await user.clear(within(editedLegCurl).getByLabelText('משקל מכונה 1'))
-    await user.type(within(editedLegCurl).getByLabelText('משקל מכונה 1'), '45')
-    await user.click(screen.getByRole('button', { name: 'שמירת שינויים' }))
-
-    expect(screen.getByText('כפיפת ברכיים: 45 ק״ג')).toBeInTheDocument()
-    const saved = loadSessions()
-    expect(saved).toHaveLength(1)
-    expect(saved[0].logs).toEqual([{ exerciseId: 'leg-curl', entries: [{ machine: '', weight: 45, unit: 'kg' }] }])
-  })
-
-  it('cannot finish an empty workout', async () => {
-    const user = userEvent.setup()
-    render(<App />)
-    await user.click(screen.getByRole('button', { name: /רגליים \+ ידיים/ }))
-    expect(screen.getByRole('button', { name: 'סיום ושמירה' })).toBeDisabled()
+    await user.click(screen.getByRole('button', { name: '→ האימונים שלי' }))
+    await user.click(screen.getByRole('button', { name: /חזה, גב, כתפיים \+ קרדיו/ }))
+    const bench = screen.getByRole('region', { name: 'לחיצת חזה' })
+    expect(within(bench).getByText('לא הוגדר עדיין')).toBeInTheDocument()
   })
 })

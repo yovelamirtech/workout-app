@@ -1,115 +1,69 @@
-import { useState } from 'react'
-import { defaultExercises, defaultTemplates } from './data/defaultTemplates'
-import { toIsoDate } from './lib/history'
-import { loadSessions, saveSessions } from './lib/storage'
-import type { ExerciseLog, WorkoutSession } from './lib/types'
-import HistoryScreen from './screens/HistoryScreen'
+import { useEffect, useState } from 'react'
+import { defaultExercises } from './data/defaultWorkouts'
+import { addExerciseToWorkout, createExercise, createWorkout } from './lib/plan'
+import { loadData, saveData, type AppData } from './lib/storage'
+import type { ExerciseType, Workout } from './lib/types'
 import HomeScreen from './screens/HomeScreen'
 import WorkoutScreen from './screens/WorkoutScreen'
 
-type Screen =
-  | { name: 'home' }
-  | { name: 'workout'; templateId: string }
-  | { name: 'edit'; sessionId: string }
-  | { name: 'history' }
+type Screen = { name: 'home' } | { name: 'workout'; workoutId: string }
 
 export default function App() {
   const [screen, setScreen] = useState<Screen>({ name: 'home' })
-  const [sessions, setSessions] = useState<WorkoutSession[]>(loadSessions)
+  const [data, setData] = useState<AppData>(loadData)
 
-  const activeTemplate =
-    screen.name === 'workout' ? defaultTemplates.find((t) => t.id === screen.templateId) : undefined
+  // Every change is saved right away: there is no "finish" step
+  useEffect(() => saveData(data), [data])
 
-  const editedSession = screen.name === 'edit' ? sessions.find((s) => s.id === screen.sessionId) : undefined
-  const editedTemplate = editedSession && defaultTemplates.find((t) => t.id === editedSession.templateId)
+  const exercises = [...defaultExercises, ...data.customExercises]
+  const activeWorkout = screen.name === 'workout' ? data.workouts.find((w) => w.id === screen.workoutId) : undefined
 
-  function finishWorkout(templateId: string, logs: ExerciseLog[]) {
-    const newSession: WorkoutSession = {
-      id: crypto.randomUUID(),
-      date: toIsoDate(new Date()),
-      templateId,
-      logs,
-    }
-    const updatedSessions = [...sessions, newSession]
-    setSessions(updatedSessions)
-    saveSessions(updatedSessions)
-    setScreen({ name: 'history' })
+  function updateWorkout(updated: Workout) {
+    setData((d) => ({ ...d, workouts: d.workouts.map((w) => (w.id === updated.id ? updated : w)) }))
   }
 
-  function saveEditedSession(sessionId: string, logs: ExerciseLog[]) {
-    const updatedSessions = sessions.map((session) => (session.id === sessionId ? { ...session, logs } : session))
-    setSessions(updatedSessions)
-    saveSessions(updatedSessions)
-    setScreen({ name: 'history' })
+  function addWorkout(name: string) {
+    const workout = createWorkout(name)
+    setData((d) => ({ ...d, workouts: [...d.workouts, workout] }))
+    setScreen({ name: 'workout', workoutId: workout.id })
   }
 
-  function deleteSession(sessionId: string) {
-    const updatedSessions = sessions.filter((session) => session.id !== sessionId)
-    setSessions(updatedSessions)
-    saveSessions(updatedSessions)
+  function deleteWorkout(workoutId: string) {
+    setData((d) => ({ ...d, workouts: d.workouts.filter((w) => w.id !== workoutId) }))
+    setScreen({ name: 'home' })
   }
 
-  const navButtonClass = (active: boolean) =>
-    `min-h-12 flex-1 rounded-lg font-semibold ${active ? 'bg-blue-600 text-white' : 'text-slate-600 hover:bg-slate-200'}`
+  function addNewExercise(workoutId: string, name: string, type: ExerciseType) {
+    const exercise = createExercise(name, type)
+    setData((d) => ({
+      customExercises: [...d.customExercises, exercise],
+      workouts: d.workouts.map((w) => (w.id === workoutId ? addExerciseToWorkout(w, exercise.id) : w)),
+    }))
+  }
 
   return (
     <div className="mx-auto min-h-screen max-w-md px-4 pb-6">
-      <header className="flex flex-col gap-3 py-4">
-        <h1 className="text-2xl font-bold">יומן אימונים</h1>
-        {(screen.name === 'home' || screen.name === 'history') && (
-          <nav className="flex gap-2">
-            <button
-              type="button"
-              className={navButtonClass(screen.name === 'home')}
-              onClick={() => setScreen({ name: 'home' })}
-            >
-              אימון חדש
-            </button>
-            <button
-              type="button"
-              className={navButtonClass(screen.name === 'history')}
-              onClick={() => setScreen({ name: 'history' })}
-            >
-              היסטוריה
-            </button>
-          </nav>
-        )}
+      <header className="py-4">
+        <h1 className="text-2xl font-bold">תוכנית אימונים</h1>
       </header>
 
       <main>
         {screen.name === 'home' && (
           <HomeScreen
-            templates={defaultTemplates}
-            onStartWorkout={(templateId) => setScreen({ name: 'workout', templateId })}
+            workouts={data.workouts}
+            onOpenWorkout={(workoutId) => setScreen({ name: 'workout', workoutId })}
+            onCreateWorkout={addWorkout}
           />
         )}
-        {activeTemplate && (
+        {activeWorkout && (
           <WorkoutScreen
-            template={activeTemplate}
-            exercises={defaultExercises}
-            sessions={sessions}
-            onFinish={(logs) => finishWorkout(activeTemplate.id, logs)}
-            onCancel={() => setScreen({ name: 'home' })}
-          />
-        )}
-        {editedSession && editedTemplate && (
-          <WorkoutScreen
-            template={editedTemplate}
-            exercises={defaultExercises}
-            // "Last time" hints come from the other workouts, not the one being edited
-            sessions={sessions.filter((s) => s.id !== editedSession.id)}
-            initialLogs={editedSession.logs}
-            onFinish={(logs) => saveEditedSession(editedSession.id, logs)}
-            onCancel={() => setScreen({ name: 'history' })}
-          />
-        )}
-        {screen.name === 'history' && (
-          <HistoryScreen
-            sessions={sessions}
-            templates={defaultTemplates}
-            exercises={defaultExercises}
-            onEdit={(sessionId) => setScreen({ name: 'edit', sessionId })}
-            onDelete={deleteSession}
+            key={activeWorkout.id}
+            workout={activeWorkout}
+            exercises={exercises}
+            onUpdate={updateWorkout}
+            onCreateExercise={(name, type) => addNewExercise(activeWorkout.id, name, type)}
+            onDelete={() => deleteWorkout(activeWorkout.id)}
+            onBack={() => setScreen({ name: 'home' })}
           />
         )}
       </main>
