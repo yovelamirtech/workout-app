@@ -7,7 +7,7 @@ A simple, mobile-first web app for logging gym workouts and knowing what to lift
 ## ⚠️ Read first — how to work with this file (every agent, every session)
 
 1. **Read this whole file before writing any code.**
-2. **Work in order.** Phase 0 and Phase 1 are the **MVP for a programming class on CI/CD**. They must stay small and simple and be fully tested. **Do not start Phase 2 or later until the owner explicitly says so.**
+2. **Work in order.** Phase 0 and Phase 1 are the **MVP for a programming class on CI/CD**. They must stay small and simple and be fully tested. The owner approved working on Phase 2 and later (2026-11-01). Always build on the current plan model (`plan.ts`, `workout-plan:v1`); do not bring back the old log model unless the owner asks.
 3. When you **start** a task, set its Status to 🟡.
 4. When you **finish** a task, set it to ✅ and fill in "Notes / what's left": what you did, any decisions you made, anything that is still missing.
 5. If you only partly finish, keep it 🟡 and write **exactly** what remains, so the next agent can continue without guessing.
@@ -185,8 +185,7 @@ The "last time" rule (`lastTime.ts`) and the history were removed on 2026-10-30 
 |---|------|-----------|--------|---------------------|
 | 1c.1 | Plan, not log | no history; workout screen shows each exercise as text (machine, weight, unit; cardio speed and incline); "ערוך" edits one exercise and saves it right away | ✅ | Removed `HistoryScreen`, `history.ts`, `lastTime.ts`, `workout.ts` and the "finish" step. New `plan.ts`, new storage key `workout-plan:v1` (starts from scratch). Plans are per workout, not shared between workouts. |
 | 1c.2 | Custom workouts | create, rename, delete workouts; add (existing or new) and remove exercises; built-in workouts stay fixed | ✅ | Custom exercises are kept in the library even when removed from a workout; there is no UI to delete or rename them yet. No reordering. |
-
-**🛑 Stop here until the owner says to continue.**
+| 1c.3 | Tap a card to edit, keep one machine | tapping anywhere on an exercise card opens its editor; a scroll does not; the only remaining machine can't be deleted | ✅ | PR #5. In `ExerciseCard` a touch that moved is treated as a scroll and ignored. The delete button of the last machine row is disabled (`MachineRow`). Covered in `WorkoutScreen.test.tsx`. |
 
 ### Phase 2 — A genuinely useful app
 
@@ -204,13 +203,15 @@ The "last time" rule (`lastTime.ts`) and the history were removed on 2026-10-30 
 
 ### Phase 3 — Insights
 
+**Note:** every task here needs workout history over time, which was removed in 1c.1 (the app keeps only the current plan). Before starting, agree with the owner how to record history again (e.g. save a dated snapshot each time an exercise is saved) without changing how the plan works.
+
 | # | Task | Done when | Status | Notes / what's left |
 |---|------|-----------|--------|---------------------|
-| 3.1 | Exercise detail page | chart of top weight and estimated 1RM over time | ⬜ | |
-| 3.2 | Personal records | PR detection (tested); badge or celebration when a new PR is logged | ⬜ | |
-| 3.3 | Weekly summary | workouts this week vs a weekly goal (setting); volume per muscle group | ⬜ | |
-| 3.4 | Calendar / heatmap | days trained, GitHub-contributions style | ⬜ | |
-| 3.5 | Streaks | consecutive weeks hitting the goal; date edge cases tested | ⬜ | |
+| 3.1 | Exercise detail page | chart of top weight and estimated 1RM over time | ⬜ | Needs history (see note above). |
+| 3.2 | Personal records | PR detection (tested); badge or celebration when a new PR is logged | ⬜ | Needs history (see note above). |
+| 3.3 | Weekly summary | workouts this week vs a weekly goal (setting); volume per muscle group | ⬜ | Needs history (see note above). |
+| 3.4 | Calendar / heatmap | days trained, GitHub-contributions style | ⬜ | Needs history (see note above). |
+| 3.5 | Streaks | consecutive weeks hitting the goal; date edge cases tested | ⬜ | Needs history (see note above). |
 
 ### Phase 4 — Quality and polish
 
@@ -244,3 +245,4 @@ Add one line at the end of every session.
 | 2026-10-23 | Claude Code (Opus 5.5) | Created the public GitHub repo `yovelamirtech/workout-app`, enabled Pages (GitHub Actions), pushed `main`. CI green, site deployed and checked live. | Class demo: failing test on a branch → red PR (finishes 0.5); README screenshot (1.8). |
 | 2026-10-27 | Claude Code | Owner change 1b.1: weight only (no reps), several machines per exercise with name + weight + unit (kg/lb/other), "last time" per machine, no suggestion. Migration of old sets data on load. lint, test (44 tests) and build pass. | Owner to try it on the phone. Class demo (0.5) now breaks `lastTime.ts` instead of the progression rule. |
 | 2026-10-30 | Claude Code | Owner change 1c: the app is now a workout plan. No history; each exercise is shown as text and edited on its own ("ערוך" → "שמור"); cardio has speed and incline; custom workouts (create, rename, delete, add/remove exercises, new exercises). Plans per workout. New storage key, starts from scratch. lint, test (35 tests) and build pass. | Owner to try it on the phone. |
+| 2026-11-01 | Claude Code | Reviewed the plan against the code. Added 1c.3 (PR #5), noted that Phase 3 needs history again, removed the stop after Phase 1 (owner approved Phase 2+). No code changes. | Owner's next session: Phase 2 and later. Open MVP items: 0.5 (red CI demo), 1.8 (README screenshot). |
