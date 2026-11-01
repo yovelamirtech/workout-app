@@ -25,7 +25,7 @@ A simple, mobile-first web app for logging gym workouts and knowing what to lift
 
 One exercise can be done on several machines that work the same muscle (a cable machine, a plate-loaded machine, plain dumbbells...). Each has different numbers and mechanics, so each exercise holds one weight per machine, with a machine name and unit typed by the user. Units: kg, lb, or "other" (a machine-specific number, shown without a unit). Units are never converted or compared between machines. Cardio exercises hold speed (km/h) and incline (%).
 
-The two default workouts are built in: their exercise list is fixed and they can't be renamed or deleted. The user can create workouts, add exercises to them (from the existing list or a new exercise with a name and type), remove exercises, rename and delete them. Plans belong to a workout: the same exercise in two workouts keeps separate numbers.
+The two default workouts are built in: their exercise list is fixed and they can't be renamed or deleted. The user can create workouts, add exercises to them (from the existing list or a new exercise with a name and type), remove and reorder exercises, rename and delete them. Built-in workouts can't be reordered either. Plans belong to a workout: the same exercise in two workouts keeps separate numbers.
 
 Everything is stored locally in the browser. No backend, no login.
 
@@ -131,7 +131,7 @@ Stored as `{ workouts, customExercises }` under `workout-plan:v1`. On first load
 - `formatMachine`: "כבל: 40 ק״ג"; without a name just the weight; without a weight "כבל: —".
 - `formatCardio`: "מהירות 5.5 קמ״ש · שיפוע 12%", only the parts that are set, or `null`.
 - `cleanMachines`: on save, trims names and drops rows with no name and no weight.
-- `updateWorkoutExercise`, `addExerciseToWorkout` (at most once), `removeExerciseFromWorkout`, `createWorkout`, `createExercise`.
+- `updateWorkoutExercise`, `addExerciseToWorkout` (at most once), `removeExerciseFromWorkout`, `moveExerciseInWorkout` (one place up or down, no-op at the edges), `createWorkout`, `createExercise`.
 
 The "last time" rule (`lastTime.ts`) and the history were removed on 2026-10-30 together with the log.
 
@@ -191,7 +191,7 @@ The "last time" rule (`lastTime.ts`) and the history were removed on 2026-10-30 
 
 | # | Task | Done when | Status | Notes / what's left |
 |---|------|-----------|--------|---------------------|
-| 2.1 | Manage templates | create, rename, delete templates; add, remove and reorder exercises | 🟡 | Done in 1c.2 except reordering. |
+| 2.1 | Manage templates | create, rename, delete templates; add, remove and reorder exercises | ✅ | Create/rename/delete/add/remove in 1c.2. Reordering: ↑/↓ buttons on each card (`moveExerciseInWorkout` in `plan.ts`), saved right away. Only in workouts the user created: built-in workouts stay fixed, including their order (owner can ask to allow it). The first card's ↑ and the last card's ↓ are disabled. Taps on the buttons don't open the editor. No drag and drop. |
 | 2.2 | Exercise library | add custom exercises with type and muscle group | 🟡 | Add with name and type done in 1c.2. Left: muscle group, rename/delete custom exercises. |
 | 2.3 | Edit and delete past sessions | with a confirmation before delete | ⏸️ | No history since 1c.1. |
 | 2.4 | Real cardio logging | duration, speed, incline; "last time" shown for cardio too | 🟡 | Speed and incline in the plan since 1c.1. Left: duration, if wanted. |
@@ -246,3 +246,4 @@ Add one line at the end of every session.
 | 2026-10-27 | Claude Code | Owner change 1b.1: weight only (no reps), several machines per exercise with name + weight + unit (kg/lb/other), "last time" per machine, no suggestion. Migration of old sets data on load. lint, test (44 tests) and build pass. | Owner to try it on the phone. Class demo (0.5) now breaks `lastTime.ts` instead of the progression rule. |
 | 2026-10-30 | Claude Code | Owner change 1c: the app is now a workout plan. No history; each exercise is shown as text and edited on its own ("ערוך" → "שמור"); cardio has speed and incline; custom workouts (create, rename, delete, add/remove exercises, new exercises). Plans per workout. New storage key, starts from scratch. lint, test (35 tests) and build pass. | Owner to try it on the phone. |
 | 2026-11-01 | Claude Code | Reviewed the plan against the code. Added 1c.3 (PR #5), noted that Phase 3 needs history again, removed the stop after Phase 1 (owner approved Phase 2+). No code changes. | Owner's next session: Phase 2 and later. Open MVP items: 0.5 (red CI demo), 1.8 (README screenshot). |
+| 2026-11-01 | Claude Code | 2.1: reorder exercises in custom workouts with ↑/↓ buttons (`moveExerciseInWorkout` + unit and component tests). Checked in the browser at phone width. lint, test (43 tests) and build pass. | 2.2: muscle group and rename/delete custom exercises. Open MVP items: 0.5 (red CI demo), 1.8 (README screenshot). |

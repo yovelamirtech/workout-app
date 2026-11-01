@@ -173,7 +173,30 @@ describe('WorkoutScreen', () => {
     expect(screen.queryByRole('button', { name: 'הסרה מהאימון' })).not.toBeInTheDocument()
   })
 
+  it('a built-in workout has no buttons to reorder exercises', () => {
+    renderScreen()
+    expect(screen.queryByRole('button', { name: /^הזזת/ })).not.toBeInTheDocument()
+  })
+
   describe('a workout the user created', () => {
+    it('moves an exercise up or down without opening its editor', async () => {
+      const user = userEvent.setup()
+      const { onUpdate } = renderScreen(custom)
+
+      await user.click(screen.getByRole('button', { name: 'הזזת חתירה למעלה' }))
+      expect(onUpdate.mock.calls[0][0].exercises.map((e) => e.exerciseId)).toEqual(['row', 'bench', 'walk'])
+      await user.click(screen.getByRole('button', { name: 'הזזת חתירה למטה' }))
+      expect(onUpdate.mock.calls[1][0].exercises.map((e) => e.exerciseId)).toEqual(['bench', 'walk', 'row'])
+      expect(screen.queryByRole('button', { name: 'שמור' })).not.toBeInTheDocument()
+    })
+
+    it('the first exercise cannot move up and the last cannot move down', () => {
+      renderScreen(custom)
+      expect(screen.getByRole('button', { name: 'הזזת לחיצת חזה למעלה' })).toBeDisabled()
+      expect(screen.getByRole('button', { name: 'הזזת לחיצת חזה למטה' })).toBeEnabled()
+      expect(screen.getByRole('button', { name: 'הזזת הליכה בשיפוע למטה' })).toBeDisabled()
+    })
+
     it('removes an exercise after confirming', async () => {
       const user = userEvent.setup()
       vi.spyOn(window, 'confirm').mockReturnValue(true)

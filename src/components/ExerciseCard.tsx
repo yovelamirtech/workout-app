@@ -11,6 +11,10 @@ interface ExerciseCardProps {
   onSave: (item: WorkoutExercise) => void
   // Only for exercises the user may remove (workouts they created)
   onRemove?: () => void
+  // Only in workouts the user created; undefined at the edge (the button is shown disabled)
+  onMoveUp?: () => void
+  onMoveDown?: () => void
+  movable?: boolean
 }
 
 const NOT_SET = 'לא הוגדר עדיין'
@@ -18,7 +22,15 @@ const NOT_SET = 'לא הוגדר עדיין'
 const TAP_SLOP = 10
 
 // Shows the plan for one exercise; tapping the card (or "ערוך") opens an editor for this exercise only
-export default function ExerciseCard({ exercise, item, onSave, onRemove }: ExerciseCardProps) {
+export default function ExerciseCard({
+  exercise,
+  item,
+  onSave,
+  onRemove,
+  onMoveUp,
+  onMoveDown,
+  movable = false,
+}: ExerciseCardProps) {
   const [editing, setEditing] = useState(false)
   const pointerStart = useRef<{ x: number; y: number } | null>(null)
 
@@ -44,14 +56,23 @@ export default function ExerciseCard({ exercise, item, onSave, onRemove }: Exerc
       <div className="flex items-center justify-between gap-2">
         <h3 className="text-lg font-semibold">{exercise.name}</h3>
         {!editing && (
-          <button
-            type="button"
-            aria-label={`עריכת ${exercise.name}`}
-            className="min-h-12 rounded-lg px-4 font-semibold text-blue-700 hover:bg-blue-50"
-            onClick={() => setEditing(true)}
-          >
-            ערוך
-          </button>
+          // Taps on these buttons (even a disabled one) are not a tap on the card
+          <div className="flex shrink-0 items-center" onClick={(e) => e.stopPropagation()}>
+            {movable && (
+              <>
+                <MoveButton label={`הזזת ${exercise.name} למעלה`} symbol="↑" onMove={onMoveUp} />
+                <MoveButton label={`הזזת ${exercise.name} למטה`} symbol="↓" onMove={onMoveDown} />
+              </>
+            )}
+            <button
+              type="button"
+              aria-label={`עריכת ${exercise.name}`}
+              className="min-h-12 rounded-lg px-4 font-semibold text-blue-700 hover:bg-blue-50"
+              onClick={() => setEditing(true)}
+            >
+              ערוך
+            </button>
+          </div>
         )}
       </div>
 
@@ -70,6 +91,20 @@ export default function ExerciseCard({ exercise, item, onSave, onRemove }: Exerc
         <PlanView exercise={exercise} item={item} />
       )}
     </section>
+  )
+}
+
+function MoveButton({ label, symbol, onMove }: { label: string; symbol: string; onMove?: () => void }) {
+  return (
+    <button
+      type="button"
+      aria-label={label}
+      className="min-h-12 min-w-12 rounded-lg text-xl text-slate-600 hover:bg-slate-100 disabled:text-slate-300"
+      disabled={!onMove}
+      onClick={onMove}
+    >
+      {symbol}
+    </button>
   )
 }
 
