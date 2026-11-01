@@ -7,7 +7,7 @@ A simple, mobile-first web app (Hebrew, RTL) that keeps your **workout plan**: o
 - Pick a workout and see each exercise as plain text: machine and weight (kg, lb, or "other" for a machine-specific number). Cardio shows speed and incline.
 - Tap "ערוך" on one exercise, change it, tap "שמור". Only that exercise is edited, and the change is saved right away for next time. There is no history and no "finish workout" step.
 - One exercise can be done on several machines; each has its own name, weight and unit.
-- The two default workouts have a fixed exercise list. You can create your own workouts, add or remove exercises (existing ones or new ones you create), rename and delete them.
+- The two default workouts have a fixed exercise list. You can create your own workouts, add, remove or reorder exercises (existing ones or new ones you create), rename and delete them.
 - Plans belong to a workout: the same exercise in two workouts keeps separate numbers.
 - Everything is stored locally in the browser (localStorage). No backend, no login.
 

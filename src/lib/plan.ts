@@ -51,6 +51,16 @@ export function removeExerciseFromWorkout(workout: Workout, exerciseId: string):
   return { ...workout, exercises: workout.exercises.filter((item) => item.exerciseId !== exerciseId) }
 }
 
+// Moves an exercise one place up (-1) or down (1); does nothing at the edges
+export function moveExerciseInWorkout(workout: Workout, exerciseId: string, direction: -1 | 1): Workout {
+  const from = workout.exercises.findIndex((item) => item.exerciseId === exerciseId)
+  const to = from + direction
+  if (from === -1 || to < 0 || to >= workout.exercises.length) return workout
+  const exercises = [...workout.exercises]
+  ;[exercises[from], exercises[to]] = [exercises[to], exercises[from]]
+  return { ...workout, exercises }
+}
+
 export function createWorkout(name: string): Workout {
   return { id: crypto.randomUUID(), name: name.trim(), builtIn: false, exercises: [] }
 }

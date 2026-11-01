@@ -2,7 +2,12 @@ import { useState } from 'react'
 import AddExercisePanel from '../components/AddExercisePanel'
 import ExerciseCard from '../components/ExerciseCard'
 import { fieldClass } from '../components/fields'
-import { addExerciseToWorkout, removeExerciseFromWorkout, updateWorkoutExercise } from '../lib/plan'
+import {
+  addExerciseToWorkout,
+  moveExerciseInWorkout,
+  removeExerciseFromWorkout,
+  updateWorkoutExercise,
+} from '../lib/plan'
 import type { Exercise, ExerciseType, Workout } from '../lib/types'
 
 interface WorkoutScreenProps {
@@ -79,13 +84,20 @@ export default function WorkoutScreen({
 
       {items.length === 0 && <p className="text-slate-500">אין עדיין תרגילים באימון</p>}
 
-      {items.map(({ item, exercise }) => (
+      {items.map(({ item, exercise }, index) => (
         <ExerciseCard
           key={item.exerciseId}
           exercise={exercise}
           item={item}
           onSave={(updated) => onUpdate(updateWorkoutExercise(workout, updated))}
           onRemove={workout.builtIn ? undefined : () => onUpdate(removeExerciseFromWorkout(workout, item.exerciseId))}
+          movable={!workout.builtIn}
+          onMoveUp={index > 0 ? () => onUpdate(moveExerciseInWorkout(workout, item.exerciseId, -1)) : undefined}
+          onMoveDown={
+            index < items.length - 1
+              ? () => onUpdate(moveExerciseInWorkout(workout, item.exerciseId, 1))
+              : undefined
+          }
         />
       ))}
 

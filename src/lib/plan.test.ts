@@ -7,6 +7,7 @@ import {
   formatCardio,
   formatMachine,
   formatWeight,
+  moveExerciseInWorkout,
   removeExerciseFromWorkout,
   updateWorkoutExercise,
 } from './plan'
@@ -98,6 +99,20 @@ describe('workout changes', () => {
 
   it('removes an exercise', () => {
     expect(removeExerciseFromWorkout(workout, 'bench').exercises.map((e) => e.exerciseId)).toEqual(['row'])
+  })
+
+  it('moves an exercise up and down', () => {
+    const three = addExerciseToWorkout(workout, 'fly')
+    const ids = (w: Workout) => w.exercises.map((e) => e.exerciseId)
+    expect(ids(moveExerciseInWorkout(three, 'fly', -1))).toEqual(['bench', 'fly', 'row'])
+    expect(ids(moveExerciseInWorkout(three, 'bench', 1))).toEqual(['row', 'bench', 'fly'])
+    expect(ids(three)).toEqual(['bench', 'row', 'fly'])
+  })
+
+  it('does not move an exercise past the edges or one that is not in the workout', () => {
+    expect(moveExerciseInWorkout(workout, 'bench', -1)).toBe(workout)
+    expect(moveExerciseInWorkout(workout, 'row', 1)).toBe(workout)
+    expect(moveExerciseInWorkout(workout, 'fly', 1)).toBe(workout)
   })
 
   it('creates an empty custom workout with a trimmed name', () => {
