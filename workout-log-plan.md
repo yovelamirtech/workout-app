@@ -68,6 +68,7 @@ src/
   components/
     ExerciseCard.tsx    (view the plan, edit one exercise)
     MachineRow.tsx
+    useFitText.ts       (shrink a machine line to fit the card)
     AddExercisePanel.tsx
     fields.ts
   screens/
@@ -186,6 +187,7 @@ The "last time" rule (`lastTime.ts`) and the history were removed on 2026-10-30 
 | 1c.1 | Plan, not log | no history; workout screen shows each exercise as text (machine, weight, unit; cardio speed and incline); "ערוך" edits one exercise and saves it right away | ✅ | Removed `HistoryScreen`, `history.ts`, `lastTime.ts`, `workout.ts` and the "finish" step. New `plan.ts`, new storage key `workout-plan:v1` (starts from scratch). Plans are per workout, not shared between workouts. |
 | 1c.2 | Custom workouts | create, rename, delete workouts; add (existing or new) and remove exercises; built-in workouts stay fixed | ✅ | Custom exercises are kept in the library even when removed from a workout; there is no UI to delete or rename them yet. No reordering. |
 | 1c.3 | Tap a card to edit, keep one machine | tapping anywhere on an exercise card opens its editor; a scroll does not; the only remaining machine can't be deleted | ✅ | PR #5. In `ExerciseCard` a touch that moved is treated as a scroll and ignored. The delete button of the last machine row is disabled (`MachineRow`). Covered in `WorkoutScreen.test.tsx`. |
+| 1c.4 | Long machine names fit the card | a long machine line shrinks a little (text-lg → base → sm) to fit on one line; if it still doesn't fit it wraps, and nothing sticks out of the card | ✅ | `useFitText` hook (`src/components/useFitText.ts`) measures the line and re-fits when the card width changes (ResizeObserver). Used for each machine line in `ExerciseCard`. Unit tests in `useFitText.test.tsx`. Checked in the browser at phone width (320px). |
 
 ### Phase 2 — A genuinely useful app
 
@@ -247,3 +249,4 @@ Add one line at the end of every session.
 | 2026-10-30 | Claude Code | Owner change 1c: the app is now a workout plan. No history; each exercise is shown as text and edited on its own ("ערוך" → "שמור"); cardio has speed and incline; custom workouts (create, rename, delete, add/remove exercises, new exercises). Plans per workout. New storage key, starts from scratch. lint, test (35 tests) and build pass. | Owner to try it on the phone. |
 | 2026-11-01 | Claude Code | Reviewed the plan against the code. Added 1c.3 (PR #5), noted that Phase 3 needs history again, removed the stop after Phase 1 (owner approved Phase 2+). No code changes. | Owner's next session: Phase 2 and later. Open MVP items: 0.5 (red CI demo), 1.8 (README screenshot). |
 | 2026-11-01 | Claude Code | 2.1: reorder exercises in custom workouts with ↑/↓ buttons (`moveExerciseInWorkout` + unit and component tests). Checked in the browser at phone width. lint, test (43 tests) and build pass. | 2.2: muscle group and rename/delete custom exercises. Open MVP items: 0.5 (red CI demo), 1.8 (README screenshot). |
+| 2026-11-03 | Claude Code | 1c.4: a long machine name shrinks a little to fit the card, and wraps instead of sticking out when it is very long. lint, test (46 tests) and build pass. | 2.2: muscle group and rename/delete custom exercises. Open MVP items: 0.5 (red CI demo), 1.8 (README screenshot). |

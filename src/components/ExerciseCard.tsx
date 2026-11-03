@@ -4,6 +4,7 @@ import { cleanMachines, emptyMachineEntry, formatCardio, formatMachine } from '.
 import type { CardioPlan, Exercise, MachineEntry, WorkoutExercise } from '../lib/types'
 import { fieldClass, toNumber } from './fields'
 import MachineRow from './MachineRow'
+import { useFitText } from './useFitText'
 
 interface ExerciseCardProps {
   exercise: Exercise
@@ -116,11 +117,20 @@ function PlanView({ exercise, item }: { exercise: Exercise; item: WorkoutExercis
   return (
     <ul className="mt-1 flex flex-col gap-1">
       {item.machines.map((entry, index) => (
-        <li key={index} className="text-lg">
-          {formatMachine(entry)}
-        </li>
+        <MachineLine key={index} text={formatMachine(entry)} />
       ))}
     </ul>
+  )
+}
+
+// A long machine name gets a slightly smaller font so the line fits the card
+function MachineLine({ text }: { text: string }) {
+  const ref = useRef<HTMLLIElement>(null)
+  useFitText(ref, text)
+  return (
+    <li ref={ref} className="text-lg wrap-break-word">
+      {text}
+    </li>
   )
 }
 
