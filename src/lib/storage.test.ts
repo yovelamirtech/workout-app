@@ -28,7 +28,22 @@ describe('storage', () => {
 
   it('round-trips save → load', () => {
     saveData(data)
-    expect(loadData()).toEqual(data)
+    expect(loadData().customExercises).toEqual(data.customExercises)
+    expect(loadData().workouts[0].exercises.find((e) => e.exerciseId === 'leg-curl')).toEqual(
+      data.workouts[0].exercises[0],
+    )
+  })
+
+  it('adds new default exercises to a saved built-in workout and keeps its plans', () => {
+    saveData(data)
+    const legs = loadData().workouts[0]
+    expect(legs.exercises.map((e) => e.exerciseId)).toEqual(
+      defaultWorkouts[0].exercises.map((e) => e.exerciseId),
+    )
+    expect(legs.exercises.find((e) => e.exerciseId === 'leg-curl')?.machines).toEqual([
+      { machine: 'כבל', weight: 40, unit: 'kg' },
+    ])
+    expect(legs.exercises.find((e) => e.exerciseId === 'hip-adduction')?.machines).toEqual([])
   })
 
   it('stores data under the versioned key', () => {
